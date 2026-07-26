@@ -20,10 +20,10 @@
   "dependencies": {
     "@arlequins/db-backbone": "workspace:*",
     "@arlequins/env": "workspace:*",
-    "@arlequins/validators": "workspace:*",
     "@arlequins/logger": "workspace:*",
     "@arlequins/service": "workspace:*",
     "@arlequins/trpc": "workspace:*",
+    "@arlequins/validators": "workspace:*",
     "@aws-sdk/client-eventbridge": "catalog:",
     "@aws-sdk/client-scheduler": "catalog:",
     "@aws-sdk/client-sqs": "catalog:",

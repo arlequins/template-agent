@@ -13,7 +13,8 @@ release automation. Security policy and AWS trust configuration remain in
 | `Security` | pull requests, merge queue, `main`, `develop`, weekly | Dependency review, CodeQL, secret scanning, license policy, and SBOM |
 | `Preview deployment` | same-repository pull requests | Deploy or remove isolated `pr-NUMBER` API and web stages |
 | `Production deployment` | manual | Deploy one application through the protected `production` environment |
-| `Release` | `main`, manual | Maintain the Release Please PR and create tags and GitHub Releases |
+| `Release` | successful `CI` on `main`, manual | Maintain the Release Please PR and create version tags |
+| `Publish tagged release` | `vX.Y.Z` tag push | Re-verify the tagged source and create the GitHub Release |
 | `AWS sandbox smoke` | manual, weekly | Exercise Function URL and API Gateway sandbox endpoints |
 | `Quickstart deployment qualification` | manual | Rename, validate, deploy, and remove a fresh full template |
 | `Baseline load test` | manual | Run the k6 baseline against an approved HTTPS target |
@@ -100,7 +101,8 @@ request closes.
 1. Merge Conventional Commits to `main` after CI and Security pass.
 2. Release Please updates the release PR, changelog, and version manifest.
 3. Review and merge the release PR through the same protected path.
-4. Confirm the `vX.Y.Z` tag and GitHub Release.
+4. Release Please pushes `vX.Y.Z`; `Publish tagged release` re-verifies that
+   exact source and creates the GitHub Release automatically.
 5. Run the production deployment procedure when that release is approved for
    the target environment.
 
