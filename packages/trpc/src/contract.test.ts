@@ -42,8 +42,8 @@ describe("public tRPC contract", () => {
     expect(procedureNames(AppRouter._def.record.agent)).toEqual([
       "addMessage",
       "addWorkspaceMember",
-      "auditLog",
       "archiveConversation",
+      "auditLog",
       "complete",
       "conversations",
       "createConversation",
