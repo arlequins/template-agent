@@ -1,3 +1,4 @@
+export { evaluateRetrievalCase } from "./evaluation";
 export type {
   AgentWorkflowPort,
   DocumentSourcePort,
@@ -19,5 +20,7 @@ export type {
   KnowledgeMatch,
   Memory,
   ModelMessage,
+  RetrievalEvaluationCase,
+  RetrievalEvaluationResult,
   StreamTextRequest,
 } from "./types";

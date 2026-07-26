@@ -162,6 +162,16 @@ The **색인 요청** action is a safe local retry: it creates an auditable inde
 re-embeds the document chunks, then records `completed` or a bounded `failed`
 error. Cloud index runs remain queued for the host application's workflow port.
 
+## Retrieval evaluation
+
+Owners can register a reviewed question with one or more expected chunk IDs and
+run a deterministic retrieval evaluation. Each result records citation recall
+(`expected chunks retrieved / expected chunks`) and the retrieved chunk IDs;
+it does not grade generated prose or silently alter knowledge. `evaluation_case`,
+`evaluation_run`, and `evaluation_result` are durable, workspace-scoped records.
+The weekly Step Functions definition can invoke this same boundary after a host
+selects approved cases.
+
 ## Optional cloud adapters
 
 `@arlequins/agent-bedrock` and `@arlequins/agent-s3-vectors` are SDK-free ports:

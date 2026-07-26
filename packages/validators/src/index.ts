@@ -95,3 +95,9 @@ export const addWorkspaceMemberInputSchema = workspaceScopeInputSchema.extend({
   role: z.enum(["member", "owner"]).default("member"),
   userId: z.uuid(),
 });
+export const createEvaluationCaseInputSchema = workspaceScopeInputSchema.extend(
+  {
+    expectedChunkIds: z.array(z.uuid()).min(1).max(12),
+    question: z.string().trim().min(1).max(10_000),
+  },
+);

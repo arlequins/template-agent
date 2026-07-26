@@ -5,6 +5,9 @@ import {
   Conversation,
   Document,
   DocumentChunk,
+  EvaluationCase,
+  EvaluationResult,
+  EvaluationRun,
   Feedback,
   IndexRun,
   Investigation,
@@ -616,6 +619,110 @@ export function createAgentPlatformRepository(database: Database) {
         memories: memories?.count ?? 0,
         messages: messages?.count ?? 0,
       };
+    },
+    async createEvaluationCase(
+      actor: WorkspaceActor,
+      input: { expectedChunkIds: string[]; question: string },
+    ) {
+      await assertOwner(actor);
+      const [evaluationCase] = await database
+        .insert(EvaluationCase)
+        .values({
+          ...input,
+          createdByUserId: actor.userId,
+          workspaceId: actor.workspaceId,
+        })
+        .returning();
+      if (!evaluationCase) throw new Error("Evaluation case creation failed");
+      await audit(actor, "evaluation.case.created", evaluationCase.id);
+      return evaluationCase;
+    },
+    async listEvaluationCases(actor: WorkspaceActor) {
+      await assertOwner(actor);
+      return database
+        .select()
+        .from(EvaluationCase)
+        .where(
+          and(
+            eq(EvaluationCase.workspaceId, actor.workspaceId),
+            eq(EvaluationCase.status, "approved"),
+          ),
+        )
+        .orderBy(desc(EvaluationCase.createdAt));
+    },
+    async createEvaluationRun(
+      actor: WorkspaceActor,
+      trigger: "manual" | "weekly",
+    ) {
+      await assertOwner(actor);
+      const [run] = await database
+        .insert(EvaluationRun)
+        .values({
+          startedAt: new Date(),
+          status: "running",
+          trigger,
+          workspaceId: actor.workspaceId,
+        })
+        .returning();
+      if (!run) throw new Error("Evaluation run creation failed");
+      await audit(actor, "evaluation.run.started", run.id, { trigger });
+      return run;
+    },
+    async completeEvaluationRun(
+      actor: WorkspaceActor,
+      input: {
+        results: Array<{
+          caseId: string;
+          citationRecall: number;
+          retrievedChunkIds: string[];
+        }>;
+        runId: string;
+      },
+    ) {
+      await assertOwner(actor);
+      const averageCitationRecall = input.results.length
+        ? input.results.reduce(
+            (sum, result) => sum + result.citationRecall,
+            0,
+          ) / input.results.length
+        : 0;
+      await database.transaction(async (tx) => {
+        if (input.results.length)
+          await tx.insert(EvaluationResult).values(
+            input.results.map((result) => ({
+              citationRecall: result.citationRecall,
+              evaluationCaseId: result.caseId,
+              evaluationRunId: input.runId,
+              retrievedChunkIds: result.retrievedChunkIds,
+            })),
+          );
+        await tx
+          .update(EvaluationRun)
+          .set({
+            completedAt: new Date(),
+            status: "completed",
+            summary: { averageCitationRecall, cases: input.results.length },
+          })
+          .where(
+            and(
+              eq(EvaluationRun.id, input.runId),
+              eq(EvaluationRun.workspaceId, actor.workspaceId),
+            ),
+          );
+      });
+      await audit(actor, "evaluation.run.completed", input.runId, {
+        averageCitationRecall,
+      });
+      return { averageCitationRecall, cases: input.results.length };
+    },
+    async listEvaluationRuns(actor: WorkspaceActor) {
+      await assertOwner(actor);
+      return database
+        .select()
+        .from(EvaluationRun)
+        .where(eq(EvaluationRun.workspaceId, actor.workspaceId))
+        .orderBy(desc(EvaluationRun.createdAt))
+        .limit(24);
     },
   };
 }
