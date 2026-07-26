@@ -2,6 +2,13 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.0](https://github.com/arlequins/template-agent/compare/v0.2.0...v0.3.0) (2026-07-26)
+
+
+### Features
+
+* complete local-first agent platform template ([cc74804](https://github.com/arlequins/template-agent/commit/cc74804bff42c35686ac2b2aaed3af443ecc5270))
+
 ## [0.2.0](https://github.com/arlequins/template-agent/compare/v0.1.0...v0.2.0) (2026-07-26)
 
 
