@@ -79,14 +79,18 @@ Start PostgreSQL, apply migrations and seeds, and launch the local OIDC provider
 API, and web app:
 
 ```bash
+ollama pull qwen2.5:3b
 cp .env.localhost.example .env.localhost
 pnpm install
 pnpm dev:local
 ```
 
 Open `http://localhost:3000`. The development identity provider accepts any
-non-empty username and password. PostgreSQL uses host port `55433` by default.
-Stop the database with `pnpm db:stop`.
+non-empty username and password. After signing in, create a workspace, start a
+conversation, optionally register text knowledge, then send a question. The
+default local model is `qwen2.5:3b`; run `ollama serve` if the Ollama service is
+not already running. PostgreSQL uses host port `55433` by default. Stop the
+database with `pnpm db:stop`.
 
 The API endpoints are:
 
