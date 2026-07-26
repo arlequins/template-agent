@@ -147,6 +147,7 @@
     "OLLAMA_MODEL"
   ],
   "globalPassThroughEnv": [
+    "API_URL",
     "NODE_ENV",
     "NO_COLOR",
     "TERM",

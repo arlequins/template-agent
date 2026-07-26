@@ -30,6 +30,7 @@
     "dev": "turbo watch dev --continue",
     "dev:local": "pnpm db:start && pnpm exec dotenv -e .env.localhost -- pnpm db:setup && pnpm exec dotenv -e .env.localhost -- pnpm dev",
     "agent:setup": "node scripts/setup-local-agent.mjs",
+    "agent:readiness": "node scripts/agent-readiness.mjs",
     "dev:next": "turbo watch dev -F @arlequins/web...",
     "dev:sst": "turbo run sst:dev --continue -F @arlequins/web -F @arlequins/api -F @arlequins/batch",
     "batch:run": "pnpm -C apps/batch with-env pnpm dlx tsx scripts/dev.ts",
