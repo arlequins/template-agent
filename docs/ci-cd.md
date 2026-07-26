@@ -59,6 +59,13 @@ without manual workflow approval. npm Trusted Publishing credentials apply
 only when a derived project adds npm publication. Do not store AWS access keys
 in GitHub; deployments use short-lived OIDC credentials.
 
+If the repository or organization disables pull-request creation by
+`GITHUB_TOKEN`, enable **Settings → Actions → General → Workflow permissions →
+Allow GitHub Actions to create and approve pull requests**, or add a
+`RELEASE_PLEASE_TOKEN` secret for a GitHub App or fine-grained token with
+Contents and Pull requests read/write access. Release Please cannot create the
+version PR until one of these authorization paths is available.
+
 ## Deployment Environment Contract
 
 `AWS_PREVIEW_SECRET_NAME` and `AWS_PRODUCTION_SECRET_NAME` may be a complete
