@@ -8,18 +8,15 @@ import {
   transformContent,
 } from "./template-init.mjs";
 
-export const FeatureNames = ["auth", "batch", "sst", "example-ui"];
+export const RequiredFeatureNames = ["auth"];
+export const FeatureNames = ["batch", "sst", "example-ui"];
 
-// Orthogonal array OA(8, 4, 2): every pair of feature flags appears in all four states.
+// Orthogonal array OA(4, 3, 2): every pair of optional feature flags appears in all four states.
 export const PairwiseFeatureMatrix = [
-  [],
-  ["sst", "example-ui"],
-  ["batch", "example-ui"],
-  ["batch", "sst"],
-  ["auth", "example-ui"],
-  ["auth", "sst"],
-  ["auth", "batch"],
-  [...FeatureNames],
+  [...RequiredFeatureNames],
+  [...RequiredFeatureNames, "sst", "example-ui"],
+  [...RequiredFeatureNames, "batch", "example-ui"],
+  [...RequiredFeatureNames, "batch", "sst"],
 ];
 
 export function assertPairwiseCoverage(matrix = PairwiseFeatureMatrix) {
@@ -48,7 +45,7 @@ export function qualifyFeatureMatrix() {
     };
     assert.deepEqual([...resolveFeatures(options)], features);
     const pruned = pathsToPrune(options);
-    assert.equal(pruned.includes("packages/auth"), !features.includes("auth"));
+    assert.equal(pruned.includes("packages/auth"), false);
     assert.equal(pruned.includes("apps/batch"), !features.includes("batch"));
     assert.equal(
       pruned.includes("tooling/sst-bootstrap"),

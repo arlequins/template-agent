@@ -63,9 +63,7 @@ function scaffoldActions(kind: "apps" | "packages") {
 function addDomainToContract(domain: string) {
   const path = "packages/trpc/src/contract.test.ts";
   const source = readFileSync(path, "utf8");
-  const match = source.match(
-    /expect\.arrayContaining\((\[[^\]]+\])\)/,
-  );
+  const match = source.match(/expect\.arrayContaining\((\[[^\]]+\])\)/);
   if (!match?.[1]) throw new Error("Unable to update the tRPC contract test");
   const routers = [...match[1].matchAll(/"([^"]+)"/g)].flatMap((entry) =>
     entry[1] ? [entry[1]] : [],
