@@ -2,6 +2,22 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.1.0](https://github.com/arlequins/template-agent/compare/v0.0.1...v0.1.0) (2026-07-26)
+
+
+### Features
+
+* manage workspace documents and citations ([988b380](https://github.com/arlequins/template-agent/commit/988b380b60c02b5af46e7a1a7945fb8471f054ae))
+
+
+### Bug Fixes
+
+* harden local agent feedback and e2e isolation ([56f6c25](https://github.com/arlequins/template-agent/commit/56f6c25e3b795a12d53a7b87d33b1e019e22e93a))
+* keep auth in minimal agent template ([4e6a74e](https://github.com/arlequins/template-agent/commit/4e6a74e7cc80e747b10d7ce4534ef8571da91aba))
+* make tag publishing idempotent ([54c774e](https://github.com/arlequins/template-agent/commit/54c774ed4083b948ab09297814726ec23e9ff3ea))
+* qualify required auth feature matrix ([389aa06](https://github.com/arlequins/template-agent/commit/389aa06afd9dc7e3ae5978e342ce1927b7c80634))
+* support generated agent contract extensions ([a5e7ec3](https://github.com/arlequins/template-agent/commit/a5e7ec38e0971bda3eb75aeb58deaa4cf89249c5))
+
 ## [0.0.1] - 2026-07-26
 
 ### Added
