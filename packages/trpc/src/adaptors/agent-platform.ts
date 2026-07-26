@@ -17,7 +17,7 @@ import {
   Workspace,
   WorkspaceMember,
 } from "@arlequins/db-backbone/schema";
-import { and, count, desc, eq, isNull, lt } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, lt } from "drizzle-orm";
 
 export type WorkspaceActor = { userId: string; workspaceId: string };
 
@@ -173,7 +173,7 @@ export function createAgentPlatformRepository(database: Database) {
     ) {
       await assertMember(actor);
       const [conversation] = await database
-        .select({ id: Conversation.id })
+        .select({ archivedAt: Conversation.archivedAt, id: Conversation.id })
         .from(Conversation)
         .where(
           and(
@@ -184,6 +184,8 @@ export function createAgentPlatformRepository(database: Database) {
         .limit(1);
       if (!conversation)
         throw new Error("Conversation was not found in this workspace");
+      if (conversation.archivedAt)
+        throw new Error("Conversation is archived and cannot accept messages");
       return database.transaction(async (tx) => {
         const [message] = await tx.insert(Message).values(input).returning();
         await tx
@@ -697,6 +699,11 @@ export function createAgentPlatformRepository(database: Database) {
       },
     ) {
       await assertOwner(actor);
+      const resultCaseIds = input.results.map((result) => result.caseId);
+      if (new Set(resultCaseIds).size !== resultCaseIds.length)
+        throw new Error(
+          "Evaluation results must contain each case at most once",
+        );
       const averageCitationRecall = input.results.length
         ? input.results.reduce(
             (sum, result) => sum + result.citationRecall,
@@ -704,6 +711,37 @@ export function createAgentPlatformRepository(database: Database) {
           ) / input.results.length
         : 0;
       await database.transaction(async (tx) => {
+        const [run, cases] = await Promise.all([
+          tx
+            .select({ id: EvaluationRun.id })
+            .from(EvaluationRun)
+            .where(
+              and(
+                eq(EvaluationRun.id, input.runId),
+                eq(EvaluationRun.workspaceId, actor.workspaceId),
+                eq(EvaluationRun.status, "running"),
+              ),
+            )
+            .limit(1),
+          resultCaseIds.length
+            ? tx
+                .select({ id: EvaluationCase.id })
+                .from(EvaluationCase)
+                .where(
+                  and(
+                    eq(EvaluationCase.workspaceId, actor.workspaceId),
+                    eq(EvaluationCase.status, "approved"),
+                    inArray(EvaluationCase.id, resultCaseIds),
+                  ),
+                )
+            : Promise.resolve([]),
+        ]);
+        if (!run)
+          throw new Error("Evaluation run was not found or is not running");
+        if (cases.length !== resultCaseIds.length)
+          throw new Error(
+            "Evaluation results include an invalid workspace case",
+          );
         if (input.results.length)
           await tx.insert(EvaluationResult).values(
             input.results.map((result) => ({
@@ -713,7 +751,7 @@ export function createAgentPlatformRepository(database: Database) {
               retrievedChunkIds: result.retrievedChunkIds,
             })),
           );
-        await tx
+        const [completedRun] = await tx
           .update(EvaluationRun)
           .set({
             completedAt: new Date(),
@@ -724,8 +762,12 @@ export function createAgentPlatformRepository(database: Database) {
             and(
               eq(EvaluationRun.id, input.runId),
               eq(EvaluationRun.workspaceId, actor.workspaceId),
+              eq(EvaluationRun.status, "running"),
             ),
-          );
+          )
+          .returning({ id: EvaluationRun.id });
+        if (!completedRun)
+          throw new Error("Evaluation run was not found or is not running");
       });
       await audit(actor, "evaluation.run.completed", input.runId, {
         averageCitationRecall,
