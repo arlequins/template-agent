@@ -186,6 +186,13 @@ They add no cloud credentials, infrastructure, or provider imports to the local
 runtime. Wire them only after selecting a model, index, IAM role, budget, and
 data residency policy; the local Ollama/PostgreSQL path stays the default.
 
+Use a dedicated runtime role, never the CI deployment role. Start from
+[`iam/agent-runtime-policy.json`](./iam/agent-runtime-policy.json), replace all
+placeholders with one approved Bedrock model, source-object prefix, and vector
+index, then validate the resulting actions against CloudTrail in a sandbox. The
+policy intentionally contains no wildcard actions or resources. Do not attach
+write access to the source-document bucket to a retrieval-only runtime.
+
 Ollama values are not included in `LambdaEnvironment`, so this local default is
 unavailable after an AWS deployment unless a separate provider adapter is
 explicitly wired.
