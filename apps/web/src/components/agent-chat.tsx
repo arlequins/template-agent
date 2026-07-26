@@ -71,6 +71,7 @@ export function AgentChat() {
   const [documentFileError, setDocumentFileError] = useState<string>();
   const [documentFilename, setDocumentFilename] = useState("notes.txt");
   const [memoryContent, setMemoryContent] = useState("");
+  const [memberUserId, setMemberUserId] = useState("");
   const [question, setQuestion] = useState("");
   const [streamedText, setStreamedText] = useState("");
   const [streamError, setStreamError] = useState<string>();
@@ -109,6 +110,10 @@ export function AgentChat() {
   const isOwner =
     workspaces.data?.find((workspace) => workspace.id === workspaceId)?.role ===
     "owner";
+  const auditLog = useQuery({
+    ...trpc.agent.auditLog.queryOptions({ workspaceId: workspaceId ?? "" }),
+    enabled: Boolean(workspaceId && isOwner),
+  });
 
   useEffect(() => {
     if (!workspaceId && workspaces.data?.[0])
@@ -206,6 +211,11 @@ export function AgentChat() {
           }),
         });
       },
+    }),
+  );
+  const addWorkspaceMember = useMutation(
+    trpc.agent.addWorkspaceMember.mutationOptions({
+      onSuccess: () => setMemberUserId(""),
     }),
   );
   const submitFeedback = useMutation(
@@ -513,6 +523,42 @@ export function AgentChat() {
           <p className="text-muted-foreground mt-2 text-xs">
             소유자만 문서 삭제와 기억 검토를 수행할 수 있습니다.
           </p>
+          {isOwner && workspaceId && (
+            <form
+              className="mt-3 flex gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!memberUserId.trim()) return;
+                addWorkspaceMember.mutate({
+                  role: "member",
+                  userId: memberUserId.trim(),
+                  workspaceId,
+                });
+              }}
+            >
+              <Input
+                aria-label="멤버 사용자 ID"
+                onChange={(event) => setMemberUserId(event.target.value)}
+                placeholder="멤버 사용자 UUID"
+                value={memberUserId}
+              />
+              <Button size="sm" type="submit" variant="outline">
+                추가
+              </Button>
+            </form>
+          )}
+          {isOwner && auditLog.data?.length ? (
+            <ul className="mt-3 space-y-1 text-xs">
+              {auditLog.data.slice(0, 5).map((entry) => (
+                <li
+                  className="text-muted-foreground"
+                  key={`${entry.action}-${entry.createdAt}`}
+                >
+                  {entry.action} · {new Date(entry.createdAt).toLocaleString()}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </details>
       </aside>
       <div className="flex min-h-[34rem] flex-col rounded-xl border">
