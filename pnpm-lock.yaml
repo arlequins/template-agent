@@ -331,9 +331,6 @@ importers:
 
   apps/web:
     dependencies:
-      '@arlequins/auth':
-        specifier: workspace:*
-        version: link:../../packages/auth
       '@arlequins/env':
         specifier: workspace:*
         version: link:../../packages/env

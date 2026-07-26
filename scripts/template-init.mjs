@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const TEMPLATE_NAME = "template-agent";
 const TEMPLATE_SCOPE = "@arlequins";
 const TEMPLATE_DISPLAY_NAME = "Agent Template";
+const REQUIRED_FEATURES = ["auth"];
 const OPTIONAL_FEATURES = ["auth", "batch", "sst", "example-ui"];
 const DEPENDENCY_FIELDS = [
   "dependencies",
@@ -34,14 +35,14 @@ export function resolveFeatures(options) {
         .map((feature) => feature.trim())
         .filter(Boolean)
     : options.preset === "minimal"
-      ? []
+      ? REQUIRED_FEATURES
       : OPTIONAL_FEATURES;
   const unknown = requested.filter(
     (feature) => !OPTIONAL_FEATURES.includes(feature),
   );
   if (unknown.length > 0)
     throw new Error(`Unknown features: ${unknown.join(", ")}`);
-  return new Set(requested);
+  return new Set([...REQUIRED_FEATURES, ...requested]);
 }
 
 export function resolveDisplayName(options) {

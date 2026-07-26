@@ -17,7 +17,6 @@
     "with-env": "dotenv -e ../../.env --"
   },
   "dependencies": {
-    "@arlequins/auth": "workspace:*",
     "@arlequins/env": "workspace:*",
     "@arlequins/trpc": "workspace:*",
     "@arlequins/ui": "workspace:*",

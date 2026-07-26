@@ -40,13 +40,13 @@ describe("template:init", () => {
     assert.deepEqual(pathsToPrune({ preset: "minimal" }), []);
     const paths = pathsToPrune({ preset: "minimal", prune: true });
     assert.ok(paths.includes("apps/batch"));
-    assert.ok(paths.includes("packages/auth"));
+    assert.ok(!paths.includes("packages/auth"));
     assert.ok(paths.includes("tooling/sst-bootstrap"));
     assert.ok(paths.includes("pnpm-lock.yaml"));
   });
 
   it("supports a minimal preset and independently selected features", async () => {
-    assert.deepEqual([...resolveFeatures({ preset: "minimal" })], []);
+    assert.deepEqual([...resolveFeatures({ preset: "minimal" })], ["auth"]);
     assert.deepEqual(
       [...resolveFeatures({ features: "auth,sst" })],
       ["auth", "sst"],
@@ -69,23 +69,22 @@ describe("template:init", () => {
       'import { protectedProcedure, publicProcedure } from "../trpc";\nconst create = protectedProcedure;\n',
       { name: "app", scope: "@company", preset: "minimal" },
     );
-    assert.doesNotMatch(router, /protectedProcedure/);
+    assert.match(router, /protectedProcedure/);
 
     const fileRouter = transformContent(
       "packages/trpc/src/router/file.ts",
       'import { Permission } from "@arlequins/auth";\nimport { permissionProcedure } from "../trpc";\nconst upload = permissionProcedure(Permission.POST_WRITE);\n',
       { name: "app", scope: "@company", preset: "minimal" },
     );
-    assert.doesNotMatch(fileRouter, /@company\/auth|permissionProcedure/);
-    assert.match(fileRouter, /publicProcedure/);
+    assert.match(fileRouter, /@company\/auth/);
+    assert.match(fileRouter, /permissionProcedure/);
 
     const trpcContext = transformContent(
       "packages/trpc/src/trpc.ts",
       'import { initTRPC, TRPCError } from "@trpc/server";\nimport { createDatabaseUserProvisioning } from "./adaptors/auth-user";\n',
       { name: "app", scope: "@company", preset: "minimal" },
     );
-    assert.doesNotMatch(trpcContext, /auth-user/);
-    assert.match(trpcContext, /initTRPC, TRPCError/);
+    assert.match(trpcContext, /auth-user/);
 
     const composition = transformContent(
       "packages/trpc/src/composition/create-context.ts",
@@ -98,7 +97,8 @@ describe("template:init", () => {
       ),
       { name: "app", scope: "@company", preset: "minimal" },
     );
-    assert.doesNotMatch(composition, /@company\/auth|authApi|tokenSession/);
+    assert.match(composition, /@company\/auth/);
+    assert.match(composition, /tokenSession/);
 
     const context = transformContent(
       "packages/trpc/src/context.ts",
@@ -108,7 +108,8 @@ describe("template:init", () => {
       ),
       { name: "app", scope: "@company", preset: "minimal" },
     );
-    assert.doesNotMatch(context, /@company\/auth|AuthSession|TRPCAuth/);
+    assert.match(context, /@company\/auth/);
+    assert.match(context, /AuthSession/);
 
     const siteConfig = transformContent(
       "apps/web/src/config/site.ts",
@@ -183,8 +184,8 @@ describe("template:init", () => {
         .replaceAll("\n", "\r\n"),
       { name: "app", scope: "@company", preset: "minimal" },
     );
-    assert.doesNotMatch(trpcProvider, /useAuth|access_token|\[user\]/);
-    assert.match(trpcProvider, /headers: \(\) => new Headers\(\)/);
+    assert.match(trpcProvider, /useAuth/);
+    assert.match(trpcProvider, /access_token/);
   });
 
   it("previews without writing and then initializes tracked text files", async () => {
@@ -259,9 +260,12 @@ describe("template:init", () => {
     );
 
     const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
-    assert.deepEqual(packageJson.dependencies, { react: "catalog:react19" });
+    assert.deepEqual(packageJson.dependencies, {
+      "oidc-client-ts": "catalog:",
+      react: "catalog:react19",
+    });
     assert.deepEqual(packageJson.devDependencies, {});
     assert.deepEqual(packageJson.scripts, {});
-    await assert.rejects(access(join(root, "packages/auth")));
+    await access(join(root, "packages/auth"));
   });
 });
