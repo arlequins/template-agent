@@ -2,6 +2,18 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.0](https://github.com/arlequins/template-agent/compare/v0.1.0...v0.2.0) (2026-07-26)
+
+
+### Features
+
+* complete local RAG operations ([2c36958](https://github.com/arlequins/template-agent/commit/2c36958d720d9604bdc7f581805714c09973ddd0))
+
+
+### Bug Fixes
+
+* document local embedding configuration ([1d512cf](https://github.com/arlequins/template-agent/commit/1d512cf8369ddef54adfd1dd91f3f7bb46dac6af))
+
 ## [0.1.0](https://github.com/arlequins/template-agent/compare/v0.0.1...v0.1.0) (2026-07-26)
 
 
