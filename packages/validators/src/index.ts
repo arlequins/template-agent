@@ -57,6 +57,12 @@ export const startIndexInputSchema = workspaceScopeInputSchema.extend({
   documentId: z.uuid(),
   provider: z.enum(["local", "s3-vectors"]).default("local"),
 });
+export const documentScopeInputSchema = workspaceScopeInputSchema.extend({
+  documentId: z.uuid(),
+});
+export const messageCitationInputSchema = workspaceScopeInputSchema.extend({
+  messageId: z.uuid(),
+});
 export const submitFeedbackInputSchema = workspaceScopeInputSchema.extend({
   messageId: z.uuid(),
   kind: z.enum(["helpful", "incorrect", "missing", "needs-investigation"]),

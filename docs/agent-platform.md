@@ -126,6 +126,18 @@ term matching. This is deliberately a minimal local RAG baseline, not semantic
 vector search. Memory starts as `candidate`; only `agent.reviewMemory` can mark
 it `approved`, and only approved, unexpired memories enter model context.
 
+## Document operations
+
+The starter UI lists workspace documents with their ingestion state, most recent
+index-request state, and a soft-delete action. Deletion sets `deletedAt`, so a
+deleted document immediately leaves retrieval results while existing audit
+records remain intact. `agent.startIndex` records a provider-neutral index run;
+the local text ingestion path completes synchronously, while a host application
+may route queued runs to the included Step Functions adapters. Assistant
+messages expose their durable document citations, including the source filename
+and a short chunk preview, only after the same workspace-membership check used
+for the conversation.
+
 Ollama values are not included in `LambdaEnvironment`, so this local default is
 unavailable after an AWS deployment unless a separate provider adapter is
 explicitly wired.

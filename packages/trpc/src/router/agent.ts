@@ -6,7 +6,9 @@ import {
   createDocumentInputSchema,
   createMemoryInputSchema,
   createWorkspaceInputSchema,
+  documentScopeInputSchema,
   ingestTextDocumentInputSchema,
+  messageCitationInputSchema,
   reviewMemoryInputSchema,
   startIndexInputSchema,
   submitFeedbackInputSchema,
@@ -76,6 +78,29 @@ export const agentRouter = {
         document,
       );
     }),
+  documents: protectedProcedure
+    .input(workspaceScopeInputSchema)
+    .query(({ ctx, input }) =>
+      ctx.services.agent.listDocuments(
+        actor(ctx.session.user.id, input.workspaceId),
+      ),
+    ),
+  deleteDocument: protectedProcedure
+    .input(documentScopeInputSchema)
+    .mutation(({ ctx, input }) =>
+      ctx.services.agent.deleteDocument(
+        actor(ctx.session.user.id, input.workspaceId),
+        input.documentId,
+      ),
+    ),
+  messageCitations: protectedProcedure
+    .input(messageCitationInputSchema)
+    .query(({ ctx, input }) =>
+      ctx.services.agent.listMessageCitations(
+        actor(ctx.session.user.id, input.workspaceId),
+        input.messageId,
+      ),
+    ),
   createMemory: protectedProcedure
     .input(createMemoryInputSchema)
     .mutation(({ ctx, input }) => {
@@ -141,6 +166,13 @@ export const agentRouter = {
       // This is intentionally only an audit-safe command. A Step Functions adapter may be attached by the host app.
       return indexRun;
     }),
+  indexRuns: protectedProcedure
+    .input(workspaceScopeInputSchema)
+    .query(({ ctx, input }) =>
+      ctx.services.agent.listIndexRuns(
+        actor(ctx.session.user.id, input.workspaceId),
+      ),
+    ),
   submitFeedback: protectedProcedure
     .input(submitFeedbackInputSchema)
     .mutation(({ ctx, input }) => {

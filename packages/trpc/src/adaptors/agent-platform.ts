@@ -205,6 +205,89 @@ export function createAgentPlatformRepository(database: Database) {
         return document;
       });
     },
+    async listDocuments(actor: WorkspaceActor) {
+      await assertMember(actor);
+      return database
+        .select({
+          createdAt: Document.createdAt,
+          filename: Document.filename,
+          id: Document.id,
+          sizeBytes: Document.sizeBytes,
+          status: Document.status,
+        })
+        .from(Document)
+        .where(
+          and(
+            eq(Document.workspaceId, actor.workspaceId),
+            isNull(Document.deletedAt),
+          ),
+        )
+        .orderBy(desc(Document.createdAt));
+    },
+    async deleteDocument(actor: WorkspaceActor, documentId: string) {
+      await assertMember(actor);
+      const [document] = await database
+        .update(Document)
+        .set({ deletedAt: new Date(), status: "deleted" })
+        .where(
+          and(
+            eq(Document.id, documentId),
+            eq(Document.workspaceId, actor.workspaceId),
+            isNull(Document.deletedAt),
+          ),
+        )
+        .returning({ id: Document.id });
+      if (!document)
+        throw new Error("Document was not found in this workspace");
+      return document;
+    },
+    async listIndexRuns(actor: WorkspaceActor, documentId?: string) {
+      await assertMember(actor);
+      return database
+        .select({
+          completedAt: IndexRun.completedAt,
+          createdAt: IndexRun.createdAt,
+          documentId: IndexRun.documentId,
+          error: IndexRun.error,
+          id: IndexRun.id,
+          provider: IndexRun.provider,
+          startedAt: IndexRun.startedAt,
+          status: IndexRun.status,
+        })
+        .from(IndexRun)
+        .where(
+          and(
+            eq(IndexRun.workspaceId, actor.workspaceId),
+            ...(documentId ? [eq(IndexRun.documentId, documentId)] : []),
+          ),
+        )
+        .orderBy(desc(IndexRun.createdAt));
+    },
+    async listMessageCitations(actor: WorkspaceActor, messageId: string) {
+      await assertMember(actor);
+      return database
+        .select({
+          content: DocumentChunk.content,
+          documentId: Document.id,
+          filename: Document.filename,
+          locator: DocumentChunk.locator,
+          ordinal: MessageCitation.ordinal,
+        })
+        .from(MessageCitation)
+        .innerJoin(Message, eq(MessageCitation.messageId, Message.id))
+        .innerJoin(Conversation, eq(Message.conversationId, Conversation.id))
+        .innerJoin(DocumentChunk, eq(MessageCitation.chunkId, DocumentChunk.id))
+        .innerJoin(Document, eq(DocumentChunk.documentId, Document.id))
+        .where(
+          and(
+            eq(MessageCitation.messageId, messageId),
+            eq(Conversation.workspaceId, actor.workspaceId),
+            eq(Document.workspaceId, actor.workspaceId),
+            isNull(Document.deletedAt),
+          ),
+        )
+        .orderBy(MessageCitation.ordinal);
+    },
     async addMessageCitations(
       actor: WorkspaceActor,
       input: { chunkIds: string[]; messageId: string },

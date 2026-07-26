@@ -28,6 +28,36 @@ function streamErrorMessage(error: unknown): string {
   return message;
 }
 
+function MessageCitations({
+  messageId,
+  workspaceId,
+}: {
+  messageId: string;
+  workspaceId: string;
+}) {
+  const trpc = useTRPC();
+  const citations = useQuery(
+    trpc.agent.messageCitations.queryOptions({ messageId, workspaceId }),
+  );
+  if (!citations.data?.length) return null;
+  return (
+    <details className="mt-3 border-t pt-3 text-xs">
+      <summary className="cursor-pointer font-medium">
+        인용 {citations.data.length}개
+      </summary>
+      <ul className="text-muted-foreground mt-2 space-y-1">
+        {citations.data.map((citation) => (
+          <li key={`${citation.documentId}-${citation.ordinal}`}>
+            {citation.filename}
+            {citation.locator ? ` · ${citation.locator}` : ""}
+            {citation.content ? ` — ${citation.content.slice(0, 120)}` : ""}
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export function AgentChat() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -55,6 +85,14 @@ export function AgentChat() {
       workspaceId: workspaceId ?? "",
     }),
     enabled: Boolean(workspaceId && conversationId),
+  });
+  const documents = useQuery({
+    ...trpc.agent.documents.queryOptions({ workspaceId: workspaceId ?? "" }),
+    enabled: Boolean(workspaceId),
+  });
+  const indexRuns = useQuery({
+    ...trpc.agent.indexRuns.queryOptions({ workspaceId: workspaceId ?? "" }),
+    enabled: Boolean(workspaceId),
   });
 
   useEffect(() => {
@@ -94,8 +132,35 @@ export function AgentChat() {
   );
   const ingestTextDocument = useMutation(
     trpc.agent.ingestTextDocument.mutationOptions({
-      onSuccess: () => {
+      onSuccess: async () => {
         setDocumentContent("");
+        await queryClient.invalidateQueries({
+          queryKey: trpc.agent.documents.queryKey({
+            workspaceId: workspaceId ?? "",
+          }),
+        });
+      },
+    }),
+  );
+  const deleteDocument = useMutation(
+    trpc.agent.deleteDocument.mutationOptions({
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: trpc.agent.documents.queryKey({
+            workspaceId: workspaceId ?? "",
+          }),
+        });
+      },
+    }),
+  );
+  const startIndex = useMutation(
+    trpc.agent.startIndex.mutationOptions({
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: trpc.agent.indexRuns.queryKey({
+            workspaceId: workspaceId ?? "",
+          }),
+        });
       },
     }),
   );
@@ -306,6 +371,63 @@ export function AgentChat() {
               </p>
             )}
           </form>
+          <div className="mt-4 space-y-2 border-t pt-4">
+            <p className="text-sm font-medium">문서</p>
+            {documents.data?.length === 0 && (
+              <p className="text-muted-foreground text-xs">
+                등록된 문서가 없습니다.
+              </p>
+            )}
+            {documents.data?.map((document) => {
+              const latestRun = indexRuns.data?.find(
+                (run) => run.documentId === document.id,
+              );
+              return (
+                <div
+                  className="rounded-md border p-2 text-xs"
+                  key={document.id}
+                >
+                  <p className="truncate font-medium">{document.filename}</p>
+                  <p className="text-muted-foreground mt-1">
+                    {document.status} · {Math.ceil(document.sizeBytes / 1024)}{" "}
+                    KB
+                    {latestRun ? ` · 색인 ${latestRun.status}` : ""}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      className="text-muted-foreground hover:underline"
+                      disabled={startIndex.isPending}
+                      onClick={() =>
+                        workspaceId &&
+                        startIndex.mutate({
+                          documentId: document.id,
+                          provider: "local",
+                          workspaceId,
+                        })
+                      }
+                      type="button"
+                    >
+                      색인 요청
+                    </button>
+                    <button
+                      className="text-destructive hover:underline"
+                      disabled={deleteDocument.isPending}
+                      onClick={() =>
+                        workspaceId &&
+                        deleteDocument.mutate({
+                          documentId: document.id,
+                          workspaceId,
+                        })
+                      }
+                      type="button"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </details>
       </aside>
       <div className="flex min-h-[34rem] flex-col rounded-xl border">
@@ -360,6 +482,12 @@ export function AgentChat() {
                     조사 요청
                   </button>
                 </div>
+              )}
+              {message.role === "assistant" && workspaceId && (
+                <MessageCitations
+                  messageId={message.id}
+                  workspaceId={workspaceId}
+                />
               )}
             </article>
           ))}
