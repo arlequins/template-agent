@@ -1,0 +1,90 @@
+# Changelog
+
+This project adheres to [Semantic Versioning](https://semver.org/).
+
+## [0.0.1] - 2026-07-26
+
+### Added
+
+- Initial generic conversational-agent template with workspace-scoped chat,
+  PostgreSQL persistence, local Ollama streaming, local text-document RAG, and
+  durable citations.
+- Provider-neutral model, memory, knowledge, vector, and workflow ports, plus
+  optional SST definitions for ingestion, feedback investigation, and weekly
+  evaluation.
+- CI, security scanning, preview/production SST deployment workflows, and
+  Release Please automation gated on successful CI.
+
+## [1.1.2](https://github.com/arlequins/template-agent/compare/v1.1.1...v1.1.2) (2026-07-23)
+
+
+### Bug Fixes
+
+* **ci:** upgrade release action to Node 24 ([#52](https://github.com/arlequins/template-agent/issues/52)) ([07cba06](https://github.com/arlequins/template-agent/commit/07cba06ca9b65877d6e378f16227c5550c2496c5))
+
+## [1.1.1](https://github.com/arlequins/template-agent/compare/v1.1.0...v1.1.1) (2026-07-23)
+
+
+### Bug Fixes
+
+* **ci:** align release tag format ([#50](https://github.com/arlequins/template-agent/issues/50)) ([31db2f9](https://github.com/arlequins/template-agent/commit/31db2f9f257c16137be05446eb7fa2b395138923))
+* **ci:** enable releases with GitHub token ([#48](https://github.com/arlequins/template-agent/issues/48)) ([c6ae828](https://github.com/arlequins/template-agent/commit/c6ae82812d4a20ec55758d67254f73aa01172857))
+* **tooling:** redact secret synchronization logs ([#46](https://github.com/arlequins/template-agent/issues/46)) ([bd52104](https://github.com/arlequins/template-agent/commit/bd5210452d889ae3382326d6d21bcfdd6bdfdf16))
+
+## [1.1.0] - 2026-07-22
+
+### Added
+
+- Interactive OpenAPI documentation with an API request explorer and browser E2E coverage.
+- Clean Architecture feature generator for domain, port, use-case, adaptor, composition, router, and test scaffolding.
+- Provider-neutral asynchronous messaging ports with in-memory and AWS adaptors.
+- Retry-safe mutation support backed by idempotency keys and optimistic content versioning.
+- Resilient S3 cache policies for stale reads, retry backoff, request coalescing, and observability hooks.
+- Isolated database integration tests powered by Testcontainers.
+- Responsive Playwright visual regression coverage for desktop and mobile layouts.
+- Template doctor and feature-matrix checks for generated project qualification.
+
+### Changed
+
+- Standardized application errors across the service, tRPC, and Hono API layers.
+- Enforced dead-code and dependency analysis in local tooling and CI.
+- Expanded CI to validate database migrations, generated presets, architecture boundaries, Storybook, and browser workflows.
+
+### Fixed
+
+- Made template environment-file updates atomic.
+- Stabilized cross-platform visual snapshots with fixed viewport baselines and platform rendering tolerance.
+
+## [1.0.1] - 2026-04-10
+
+### Added
+
+- **`@arlequins/shared`** — cross-cutting helpers; exports `runDrizzleSeeds` from `@arlequins/shared/seed` for TypeScript-based Drizzle seeds (ledger table, `SST_STAGE` via `resolveDeployStage()`).
+- **`@arlequins/types`** — shared types including `SeedContext` / `SeedRun` for seed modules.
+
+### Changed
+
+- **`@arlequins/db-backbone`** — `scripts/seed.ts` delegates to `runDrizzleSeeds`; seed files live under `packages/db-backbone/scripts/seeds/*.ts` (default export). Drizzle-related dependencies use **`catalog:`** entries.
+- **Root `pnpm-workspace.yaml`** — `catalog` lists `drizzle-orm`, `drizzle-zod`, `drizzle-kit`, `postgres`, and `tsx` for consistent versions across packages.
+
+### Docs
+
+- Root [`README.md`](./README.md): database seed command, packages index link, pnpm catalog note.
+- [`packages/README.md`](./packages/README.md), [`packages/db-backbone/README.md`](./packages/db-backbone/README.md), [`packages/shared/README.md`](./packages/shared/README.md), [`packages/types/README.md`](./packages/types/README.md).
+
+## [1.0.0] - 2026-04-09
+
+### Summary
+
+- **Initial stable release.** Inspired by T3 / [create-t3-turbo](https://github.com/t3-oss/create-t3-turbo), but AWS deployment, batch jobs, and shared packages diverge significantly (see README _How this differs from a stock T3 template_).
+
+### Included
+
+- **Apps:** `apps/web` (Next.js static export + tRPC client), `apps/api` (TanStack Start + tRPC + Nitro on AWS), `apps/batch` (SST Step Functions + Lambda + EventBridge Cron).
+- **Shared packages:** `@arlequins/db-backbone`, `@arlequins/trpc`, `@arlequins/ui`, `@arlequins/env`, `@arlequins/validators`, `@arlequins/types`, `@arlequins/shared`, etc.
+- **Infrastructure:** SST (Ion) on AWS; `tooling/sst-bootstrap` for Secrets Manager ↔ root `.env` sync.
+- **Tooling:** Turborepo, pnpm workspaces, and Biome.
+
+### Docs
+
+- Root README updated with tech stack, T3 divergence note, and repository layout.
