@@ -97,6 +97,14 @@ export const agentRouter = {
         actor(ctx.session.user.id, input.workspaceId),
       ),
     ),
+  archiveConversation: protectedProcedure
+    .input(conversationScopeInputSchema)
+    .mutation(({ ctx, input }) =>
+      ctx.services.agent.archiveConversation(
+        actor(ctx.session.user.id, input.workspaceId),
+        input.conversationId,
+      ),
+    ),
   messages: protectedProcedure
     .input(conversationScopeInputSchema)
     .query(({ ctx, input }) =>

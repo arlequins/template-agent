@@ -145,6 +145,23 @@ export function createAgentPlatformRepository(database: Database) {
         )
         .orderBy(desc(Conversation.updatedAt));
     },
+    async archiveConversation(actor: WorkspaceActor, conversationId: string) {
+      await assertMember(actor);
+      const [conversation] = await database
+        .update(Conversation)
+        .set({ archivedAt: new Date(), updatedAt: new Date() })
+        .where(
+          and(
+            eq(Conversation.id, conversationId),
+            eq(Conversation.workspaceId, actor.workspaceId),
+          ),
+        )
+        .returning();
+      if (!conversation)
+        throw new Error("Conversation was not found in this workspace");
+      await audit(actor, "conversation.archived", conversation.id);
+      return conversation;
+    },
     async addMessage(
       actor: WorkspaceActor,
       input: {

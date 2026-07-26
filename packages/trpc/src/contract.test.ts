@@ -43,6 +43,7 @@ describe("public tRPC contract", () => {
       "addMessage",
       "addWorkspaceMember",
       "auditLog",
+      "archiveConversation",
       "complete",
       "conversations",
       "createConversation",
