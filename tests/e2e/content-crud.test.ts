@@ -6,18 +6,19 @@ async function signIn(page: import("@playwright/test").Page) {
   await page.getByPlaceholder("and password").fill("local-password");
   await page.getByRole("button", { name: "Sign-in" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page).toHaveURL("http://localhost:3100/posts/");
+  await expect(page).toHaveURL("http://localhost:3100/");
 }
 
-test("supports the generic content lifecycle without horizontal overflow", async ({
+test("creates an agent workspace and starts a conversation without horizontal overflow", async ({
   page,
 }, testInfo) => {
   const suffix = `${testInfo.project.name}-${Date.now()}`;
-  const initialTitle = `Content ${suffix}`;
-  const updatedTitle = `Updated ${suffix}`;
+  const workspaceName = `Research ${suffix}`;
 
-  await page.goto("/posts/");
-  await expect(page.getByRole("heading", { name: "Content" })).toBeVisible();
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "Agent Template" }),
+  ).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -25,30 +26,10 @@ test("supports the generic content lifecycle without horizontal overflow", async
   ).toBe(true);
 
   await signIn(page);
-  await page.getByRole("link", { name: "New item" }).click();
-  await page.getByRole("textbox", { name: "Title" }).fill(initialTitle);
-  await page
-    .getByRole("textbox", { name: "Body" })
-    .fill("Reusable application content");
-  await page.getByRole("button", { name: "Save item" }).click();
-  await expect(page).toHaveURL("http://localhost:3100/posts/");
-
-  await page.getByRole("textbox", { name: "Search content" }).fill(suffix);
-  await expect(page.getByRole("heading", { name: initialTitle })).toBeVisible();
-  await page.getByRole("link", { name: `Edit ${initialTitle}` }).click();
-  await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue(
-    initialTitle,
-  );
-  await page.getByRole("textbox", { name: "Title" }).fill(updatedTitle);
-  await page.getByRole("button", { name: "Save item" }).click();
-  await expect(page).toHaveURL("http://localhost:3100/posts/");
-
-  await page.getByRole("textbox", { name: "Search content" }).fill(suffix);
-  await expect(page.getByRole("heading", { name: updatedTitle })).toBeVisible();
-  await page.getByRole("button", { name: `Delete ${updatedTitle}` }).click();
-  await expect(page.getByRole("alertdialog")).toBeVisible();
-  await page.getByRole("button", { name: "Delete", exact: true }).click();
-  await expect(page.getByRole("heading", { name: updatedTitle })).toHaveCount(
-    0,
-  );
+  await page.getByLabel("워크스페이스 이름").fill(workspaceName);
+  await page.getByRole("button", { name: "만들기" }).click();
+  await expect(page.locator("select")).toContainText(workspaceName);
+  await page.getByRole("button", { name: "새 대화" }).click();
+  await expect(page.getByRole("button", { name: "새 대화" })).toBeVisible();
+  await expect(page.getByLabel("질문")).toBeEnabled();
 });

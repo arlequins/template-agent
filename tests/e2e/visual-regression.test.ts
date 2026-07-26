@@ -1,11 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const pages = [
-  { name: "dashboard", path: "/" },
-  { name: "content-list", path: "/posts/" },
-  { name: "users", path: "/users/" },
-  { name: "admin", path: "/admin/" },
-] as const;
+const pages = [{ name: "dashboard", path: "/" }] as const;
 
 for (const pageCase of pages) {
   test(`${pageCase.name} matches the responsive visual baseline`, async ({
