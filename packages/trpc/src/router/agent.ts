@@ -125,12 +125,17 @@ export const agentRouter = {
   ingestTextDocument: protectedProcedure
     .input(ingestTextDocumentInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const { workspaceId, ...document } = input;
+      const { content, contentType, filename, workspaceId } = input;
       const actorInput = actor(ctx.session.user.id, workspaceId);
-      const created = await ctx.services.agent.ingestTextDocument(
-        actorInput,
-        document,
-      );
+      const extracted = await ctx.services.documentExtraction.extract({
+        bytes: new TextEncoder().encode(content),
+        contentType,
+        filename,
+      });
+      const created = await ctx.services.agent.ingestTextDocument(actorInput, {
+        content: extracted.text,
+        filename,
+      });
       if (ctx.services.embedding) {
         try {
           const chunks = await ctx.services.agent.listDocumentChunks(

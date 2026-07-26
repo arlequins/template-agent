@@ -77,6 +77,9 @@ export const conversationScopeInputSchema = workspaceScopeInputSchema.extend({
 });
 export const ingestTextDocumentInputSchema = workspaceScopeInputSchema.extend({
   content: z.string().trim().min(1).max(1_000_000),
+  contentType: z
+    .enum(["text/html", "text/markdown", "text/plain"])
+    .default("text/plain"),
   filename: z.string().trim().min(1).max(512),
 });
 export const createMemoryInputSchema = workspaceScopeInputSchema.extend({

@@ -1,3 +1,4 @@
+import { createTextDocumentExtraction } from "@arlequins/agent-core";
 import {
   createOllamaEmbeddingProvider,
   createOllamaModelProvider,
@@ -82,6 +83,7 @@ export async function createTRPCContext(
             model: serverEnv.OLLAMA_EMBEDDING_MODEL,
           })
         : undefined,
+      documentExtraction: createTextDocumentExtraction(),
       content: createContentService({
         logger: options.logger.child({ component: "content-service" }),
         repository: createDrizzlePostRepository(db, { cache: getPostCache() }),

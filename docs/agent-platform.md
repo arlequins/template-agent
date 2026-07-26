@@ -142,6 +142,12 @@ messages expose their durable document citations, including the source filename
 and a short chunk preview, only after the same workspace-membership check used
 for the conversation.
 
+Text, Markdown, and HTML pass through a server-side extraction port before
+chunking. The built-in HTML extractor removes script and style content; PDF and
+DOCX must be connected through a host parser plus malware-scanning adapter,
+then follow the same queued index-run path. Do not extract binary office files
+in the browser.
+
 ## Operations, retention, and roles
 
 `workspace_member.role` is enforced on every query. Members can use their

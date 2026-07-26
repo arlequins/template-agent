@@ -30,6 +30,15 @@ export type DocumentSourcePort = {
   read(input: { sourceUri: string; workspaceId: string }): Promise<Uint8Array>;
 };
 
+/** Server-side parser boundary. Browser clients never decide how binary files are interpreted. */
+export type DocumentExtractionPort = {
+  extract(input: {
+    bytes: Uint8Array;
+    contentType: string;
+    filename: string;
+  }): Promise<{ text: string; warnings: string[] }>;
+};
+
 /** Boundary for vector stores. The relational store maps every vector id back to an authorized chunk. */
 export type VectorIndexPort = {
   delete(input: { recordIds: string[]; workspaceId: string }): Promise<void>;

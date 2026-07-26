@@ -65,6 +65,9 @@ export function AgentChat() {
   const [conversationId, setConversationId] = useState<string>();
   const [workspaceName, setWorkspaceName] = useState("");
   const [documentContent, setDocumentContent] = useState("");
+  const [documentContentType, setDocumentContentType] = useState<
+    "text/html" | "text/markdown" | "text/plain"
+  >("text/plain");
   const [documentFileError, setDocumentFileError] = useState<string>();
   const [documentFilename, setDocumentFilename] = useState("notes.txt");
   const [memoryContent, setMemoryContent] = useState("");
@@ -227,6 +230,7 @@ export function AgentChat() {
       return;
     ingestTextDocument.mutate({
       content: documentContent,
+      contentType: documentContentType,
       filename: documentFilename.trim(),
       workspaceId,
     });
@@ -246,6 +250,13 @@ export function AgentChat() {
       return;
     }
     setDocumentFilename(file.name);
+    setDocumentContentType(
+      file.type === "text/html" || /\.html?$/i.test(file.name)
+        ? "text/html"
+        : /\.md$/i.test(file.name)
+          ? "text/markdown"
+          : "text/plain",
+    );
     setDocumentContent(await file.text());
   }
 
