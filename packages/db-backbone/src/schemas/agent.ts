@@ -262,3 +262,68 @@ export const AuditLog = agent.table(
     ),
   ],
 );
+
+export const EvaluationCase = agent.table(
+  "evaluation_case",
+  (t) => ({
+    id: t.uuid().primaryKey().defaultRandom(),
+    workspaceId: t
+      .uuid()
+      .notNull()
+      .references(() => Workspace.id, { onDelete: "cascade" }),
+    question: t.text().notNull(),
+    expectedChunkIds: t.jsonb().$type<string[]>().notNull(),
+    status: t.varchar({ length: 24 }).notNull().default("approved"),
+    createdByUserId: t.uuid().notNull(),
+    createdAt: t.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (table) => [
+    index("evaluation_case_workspace_status_idx").on(
+      table.workspaceId,
+      table.status,
+    ),
+  ],
+);
+
+export const EvaluationRun = agent.table(
+  "evaluation_run",
+  (t) => ({
+    id: t.uuid().primaryKey().defaultRandom(),
+    workspaceId: t
+      .uuid()
+      .notNull()
+      .references(() => Workspace.id, { onDelete: "cascade" }),
+    trigger: t.varchar({ length: 32 }).notNull(),
+    status: t.varchar({ length: 24 }).notNull().default("queued"),
+    summary: t.jsonb(),
+    startedAt: t.timestamp({ withTimezone: true }),
+    completedAt: t.timestamp({ withTimezone: true }),
+    createdAt: t.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (table) => [
+    index("evaluation_run_workspace_created_idx").on(
+      table.workspaceId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const EvaluationResult = agent.table(
+  "evaluation_result",
+  (t) => ({
+    evaluationRunId: t
+      .uuid()
+      .notNull()
+      .references(() => EvaluationRun.id, { onDelete: "cascade" }),
+    evaluationCaseId: t
+      .uuid()
+      .notNull()
+      .references(() => EvaluationCase.id, { onDelete: "cascade" }),
+    citationRecall: t.real().notNull(),
+    retrievedChunkIds: t.jsonb().$type<string[]>().notNull(),
+    createdAt: t.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (table) => [
+    primaryKey({ columns: [table.evaluationRunId, table.evaluationCaseId] }),
+  ],
+);

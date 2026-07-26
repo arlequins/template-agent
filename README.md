@@ -83,6 +83,7 @@ pnpm install
 pnpm agent:setup
 ollama pull qwen2.5:3b
 ollama pull nomic-embed-text
+pnpm agent:demo:check
 pnpm dev:local
 ```
 
@@ -114,6 +115,7 @@ for provider configuration.
 | --- | --- |
 | `pnpm dev:local` | Start the complete local application stack. |
 | `pnpm agent:setup` | Create `.env.localhost` without overwriting an existing local configuration. |
+| `pnpm agent:demo:check` | Verify the local Ollama chat and embedding models without downloading them. |
 | `pnpm dev` | Run development tasks when dependencies are already available. |
 | `pnpm dev:sst` | Run web, API, and batch through cloud-backed SST development. |
 | `pnpm check` / `pnpm check:fix` | Check or fix Biome formatting and lint rules. |
@@ -157,6 +159,8 @@ Workspace owners manage members, document deletion, memory review, retention,
 and the audit trail. Members can only act within workspaces where they have a
 membership. See [Agent Platform](./docs/agent-platform.md) for the data model,
 retention boundary, Docker Ollama profile, and optional cloud adapters.
+
+For a complete click-through local verification, see [Local agent demo](./docs/local-agent-demo.md).
 
 ## Template Qualification
 

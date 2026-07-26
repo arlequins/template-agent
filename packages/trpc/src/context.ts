@@ -1,4 +1,5 @@
 import type {
+  DocumentExtractionPort,
   EmbeddingProviderPort,
   KnowledgeSearchPort,
   MemorySearchPort,
@@ -15,6 +16,7 @@ export type TRPCServices = {
   agent: ReturnType<typeof createAgentPlatformRepository>;
   model?: ModelProviderPort;
   embedding?: EmbeddingProviderPort;
+  documentExtraction: DocumentExtractionPort;
   knowledgeSearch: KnowledgeSearchPort;
   memorySearch: MemorySearchPort;
 };

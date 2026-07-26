@@ -5,6 +5,7 @@ import {
   conversationScopeInputSchema,
   createConversationInputSchema,
   createDocumentInputSchema,
+  createEvaluationCaseInputSchema,
   createMemoryInputSchema,
   createWorkspaceInputSchema,
   documentScopeInputSchema,
@@ -20,6 +21,7 @@ import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 
 import { streamAgentCompletion } from "../application/agent-completion";
+import { runRetrievalEvaluation } from "../application/retrieval-evaluation";
 import { protectedProcedure } from "../trpc";
 
 function actor(userId: string, workspaceId: string) {
@@ -48,11 +50,59 @@ export const agentRouter = {
         input.role,
       ),
     ),
+  createEvaluationCase: protectedProcedure
+    .input(createEvaluationCaseInputSchema)
+    .mutation(({ ctx, input }) => {
+      const { workspaceId, ...evaluationCase } = input;
+      return ctx.services.agent.createEvaluationCase(
+        actor(ctx.session.user.id, workspaceId),
+        evaluationCase,
+      );
+    }),
+  evaluationCases: protectedProcedure
+    .input(workspaceScopeInputSchema)
+    .query(({ ctx, input }) =>
+      ctx.services.agent.listEvaluationCases(
+        actor(ctx.session.user.id, input.workspaceId),
+      ),
+    ),
+  runEvaluation: protectedProcedure
+    .input(workspaceScopeInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const actorInput = actor(ctx.session.user.id, input.workspaceId);
+      const [run, cases] = await Promise.all([
+        ctx.services.agent.createEvaluationRun(actorInput, "manual"),
+        ctx.services.agent.listEvaluationCases(actorInput),
+      ]);
+      const results = await runRetrievalEvaluation(ctx.services, {
+        cases,
+        workspaceId: input.workspaceId,
+      });
+      return ctx.services.agent.completeEvaluationRun(actorInput, {
+        results,
+        runId: run.id,
+      });
+    }),
+  evaluationRuns: protectedProcedure
+    .input(workspaceScopeInputSchema)
+    .query(({ ctx, input }) =>
+      ctx.services.agent.listEvaluationRuns(
+        actor(ctx.session.user.id, input.workspaceId),
+      ),
+    ),
   conversations: protectedProcedure
     .input(workspaceScopeInputSchema)
     .query(({ ctx, input }) =>
       ctx.services.agent.listConversations(
         actor(ctx.session.user.id, input.workspaceId),
+      ),
+    ),
+  archiveConversation: protectedProcedure
+    .input(conversationScopeInputSchema)
+    .mutation(({ ctx, input }) =>
+      ctx.services.agent.archiveConversation(
+        actor(ctx.session.user.id, input.workspaceId),
+        input.conversationId,
       ),
     ),
   messages: protectedProcedure
@@ -83,12 +133,17 @@ export const agentRouter = {
   ingestTextDocument: protectedProcedure
     .input(ingestTextDocumentInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const { workspaceId, ...document } = input;
+      const { content, contentType, filename, workspaceId } = input;
       const actorInput = actor(ctx.session.user.id, workspaceId);
-      const created = await ctx.services.agent.ingestTextDocument(
-        actorInput,
-        document,
-      );
+      const extracted = await ctx.services.documentExtraction.extract({
+        bytes: new TextEncoder().encode(content),
+        contentType,
+        filename,
+      });
+      const created = await ctx.services.agent.ingestTextDocument(actorInput, {
+        content: extracted.text,
+        filename,
+      });
       if (ctx.services.embedding) {
         try {
           const chunks = await ctx.services.agent.listDocumentChunks(

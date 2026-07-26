@@ -21,6 +21,10 @@ local application; the pages below explain design decisions and ongoing work.
   local identity provider, token validation, and application authorization.
 - [Database operations](database-operations.md): migration order, backups,
   restore verification, and failure recovery.
+- [Agent operations](agent-operations.md): readiness monitoring, alert policy,
+  quotas, backups, and retrieval-incident recovery.
+- [Local agent demo](local-agent-demo.md): verify Ollama prerequisites and run
+  the full no-cloud chat and RAG walkthrough.
 - [SST local testing](sst-local-testing.md): what can be validated without SST
   sign-in or AWS credentials.
 - [Test operations](testing-operations.md): test layers, external test

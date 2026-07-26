@@ -20,6 +20,10 @@ Set `AWS_REGION` as an environment variable. Do not store AWS access keys in Git
 
 Start with the trust-policy template in [`docs/iam/github-oidc-trust-policy.json`](./iam/github-oidc-trust-policy.json). Replace placeholders and retain only the subject appropriate for each role before applying it. The deployment permission policy is intentionally not universal: generate it from CloudTrail after a sandbox deployment, then constrain actions and resources to the stacks, state bucket, asset bucket, and roles owned by this repository.
 
+The agent runtime must use a separate role from CI. Its narrow starting policy is
+[`docs/iam/agent-runtime-policy.json`](./iam/agent-runtime-policy.json); scope
+it to a single model, document prefix, and S3 Vectors index before deployment.
+
 ## Environments and Branch Protection
 
 Create a `production` GitHub Environment with required reviewers, prevent self-review, restrict deployment to protected release branches or tags, and configure an approval timeout. Protect `main` and `develop`, require the CI and Security checks, require review, dismiss stale approvals, and disallow force pushes.

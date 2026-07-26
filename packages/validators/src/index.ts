@@ -77,6 +77,9 @@ export const conversationScopeInputSchema = workspaceScopeInputSchema.extend({
 });
 export const ingestTextDocumentInputSchema = workspaceScopeInputSchema.extend({
   content: z.string().trim().min(1).max(1_000_000),
+  contentType: z
+    .enum(["text/html", "text/markdown", "text/plain"])
+    .default("text/plain"),
   filename: z.string().trim().min(1).max(512),
 });
 export const createMemoryInputSchema = workspaceScopeInputSchema.extend({
@@ -95,3 +98,9 @@ export const addWorkspaceMemberInputSchema = workspaceScopeInputSchema.extend({
   role: z.enum(["member", "owner"]).default("member"),
   userId: z.uuid(),
 });
+export const createEvaluationCaseInputSchema = workspaceScopeInputSchema.extend(
+  {
+    expectedChunkIds: z.array(z.uuid()).min(1).max(12),
+    question: z.string().trim().min(1).max(10_000),
+  },
+);

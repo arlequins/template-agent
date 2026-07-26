@@ -1,5 +1,8 @@
+export { createTextDocumentExtraction } from "./document-extraction";
+export { evaluateRetrievalCase } from "./evaluation";
 export type {
   AgentWorkflowPort,
+  DocumentExtractionPort,
   DocumentSourcePort,
   EmbeddingProviderPort,
   KnowledgeSearchPort,
@@ -19,5 +22,7 @@ export type {
   KnowledgeMatch,
   Memory,
   ModelMessage,
+  RetrievalEvaluationCase,
+  RetrievalEvaluationResult,
   StreamTextRequest,
 } from "./types";

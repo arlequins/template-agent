@@ -58,3 +58,16 @@ export type IndexDocumentRequest = {
   chunks: Array<{ content: string; recordId: string }>;
   workspaceId: string;
 };
+
+/** A reviewed retrieval expectation. Keep expected evidence explicit and auditable. */
+export type RetrievalEvaluationCase = {
+  expectedChunkIds: string[];
+  id: string;
+  question: string;
+};
+
+export type RetrievalEvaluationResult = {
+  citationRecall: number;
+  caseId: string;
+  retrievedChunkIds: string[];
+};

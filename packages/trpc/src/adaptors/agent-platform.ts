@@ -5,6 +5,9 @@ import {
   Conversation,
   Document,
   DocumentChunk,
+  EvaluationCase,
+  EvaluationResult,
+  EvaluationRun,
   Feedback,
   IndexRun,
   Investigation,
@@ -14,7 +17,7 @@ import {
   Workspace,
   WorkspaceMember,
 } from "@arlequins/db-backbone/schema";
-import { and, count, desc, eq, isNull, lt } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, lt } from "drizzle-orm";
 
 export type WorkspaceActor = { userId: string; workspaceId: string };
 
@@ -142,6 +145,23 @@ export function createAgentPlatformRepository(database: Database) {
         )
         .orderBy(desc(Conversation.updatedAt));
     },
+    async archiveConversation(actor: WorkspaceActor, conversationId: string) {
+      await assertMember(actor);
+      const [conversation] = await database
+        .update(Conversation)
+        .set({ archivedAt: new Date(), updatedAt: new Date() })
+        .where(
+          and(
+            eq(Conversation.id, conversationId),
+            eq(Conversation.workspaceId, actor.workspaceId),
+          ),
+        )
+        .returning();
+      if (!conversation)
+        throw new Error("Conversation was not found in this workspace");
+      await audit(actor, "conversation.archived", conversation.id);
+      return conversation;
+    },
     async addMessage(
       actor: WorkspaceActor,
       input: {
@@ -153,7 +173,7 @@ export function createAgentPlatformRepository(database: Database) {
     ) {
       await assertMember(actor);
       const [conversation] = await database
-        .select({ id: Conversation.id })
+        .select({ archivedAt: Conversation.archivedAt, id: Conversation.id })
         .from(Conversation)
         .where(
           and(
@@ -164,6 +184,8 @@ export function createAgentPlatformRepository(database: Database) {
         .limit(1);
       if (!conversation)
         throw new Error("Conversation was not found in this workspace");
+      if (conversation.archivedAt)
+        throw new Error("Conversation is archived and cannot accept messages");
       return database.transaction(async (tx) => {
         const [message] = await tx.insert(Message).values(input).returning();
         await tx
@@ -616,6 +638,150 @@ export function createAgentPlatformRepository(database: Database) {
         memories: memories?.count ?? 0,
         messages: messages?.count ?? 0,
       };
+    },
+    async createEvaluationCase(
+      actor: WorkspaceActor,
+      input: { expectedChunkIds: string[]; question: string },
+    ) {
+      await assertOwner(actor);
+      const [evaluationCase] = await database
+        .insert(EvaluationCase)
+        .values({
+          ...input,
+          createdByUserId: actor.userId,
+          workspaceId: actor.workspaceId,
+        })
+        .returning();
+      if (!evaluationCase) throw new Error("Evaluation case creation failed");
+      await audit(actor, "evaluation.case.created", evaluationCase.id);
+      return evaluationCase;
+    },
+    async listEvaluationCases(actor: WorkspaceActor) {
+      await assertOwner(actor);
+      return database
+        .select()
+        .from(EvaluationCase)
+        .where(
+          and(
+            eq(EvaluationCase.workspaceId, actor.workspaceId),
+            eq(EvaluationCase.status, "approved"),
+          ),
+        )
+        .orderBy(desc(EvaluationCase.createdAt));
+    },
+    async createEvaluationRun(
+      actor: WorkspaceActor,
+      trigger: "manual" | "weekly",
+    ) {
+      await assertOwner(actor);
+      const [run] = await database
+        .insert(EvaluationRun)
+        .values({
+          startedAt: new Date(),
+          status: "running",
+          trigger,
+          workspaceId: actor.workspaceId,
+        })
+        .returning();
+      if (!run) throw new Error("Evaluation run creation failed");
+      await audit(actor, "evaluation.run.started", run.id, { trigger });
+      return run;
+    },
+    async completeEvaluationRun(
+      actor: WorkspaceActor,
+      input: {
+        results: Array<{
+          caseId: string;
+          citationRecall: number;
+          retrievedChunkIds: string[];
+        }>;
+        runId: string;
+      },
+    ) {
+      await assertOwner(actor);
+      const resultCaseIds = input.results.map((result) => result.caseId);
+      if (new Set(resultCaseIds).size !== resultCaseIds.length)
+        throw new Error(
+          "Evaluation results must contain each case at most once",
+        );
+      const averageCitationRecall = input.results.length
+        ? input.results.reduce(
+            (sum, result) => sum + result.citationRecall,
+            0,
+          ) / input.results.length
+        : 0;
+      await database.transaction(async (tx) => {
+        const [run, cases] = await Promise.all([
+          tx
+            .select({ id: EvaluationRun.id })
+            .from(EvaluationRun)
+            .where(
+              and(
+                eq(EvaluationRun.id, input.runId),
+                eq(EvaluationRun.workspaceId, actor.workspaceId),
+                eq(EvaluationRun.status, "running"),
+              ),
+            )
+            .limit(1),
+          resultCaseIds.length
+            ? tx
+                .select({ id: EvaluationCase.id })
+                .from(EvaluationCase)
+                .where(
+                  and(
+                    eq(EvaluationCase.workspaceId, actor.workspaceId),
+                    eq(EvaluationCase.status, "approved"),
+                    inArray(EvaluationCase.id, resultCaseIds),
+                  ),
+                )
+            : Promise.resolve([]),
+        ]);
+        if (!run)
+          throw new Error("Evaluation run was not found or is not running");
+        if (cases.length !== resultCaseIds.length)
+          throw new Error(
+            "Evaluation results include an invalid workspace case",
+          );
+        if (input.results.length)
+          await tx.insert(EvaluationResult).values(
+            input.results.map((result) => ({
+              citationRecall: result.citationRecall,
+              evaluationCaseId: result.caseId,
+              evaluationRunId: input.runId,
+              retrievedChunkIds: result.retrievedChunkIds,
+            })),
+          );
+        const [completedRun] = await tx
+          .update(EvaluationRun)
+          .set({
+            completedAt: new Date(),
+            status: "completed",
+            summary: { averageCitationRecall, cases: input.results.length },
+          })
+          .where(
+            and(
+              eq(EvaluationRun.id, input.runId),
+              eq(EvaluationRun.workspaceId, actor.workspaceId),
+              eq(EvaluationRun.status, "running"),
+            ),
+          )
+          .returning({ id: EvaluationRun.id });
+        if (!completedRun)
+          throw new Error("Evaluation run was not found or is not running");
+      });
+      await audit(actor, "evaluation.run.completed", input.runId, {
+        averageCitationRecall,
+      });
+      return { averageCitationRecall, cases: input.results.length };
+    },
+    async listEvaluationRuns(actor: WorkspaceActor) {
+      await assertOwner(actor);
+      return database
+        .select()
+        .from(EvaluationRun)
+        .where(eq(EvaluationRun.workspaceId, actor.workspaceId))
+        .orderBy(desc(EvaluationRun.createdAt))
+        .limit(24);
     },
   };
 }

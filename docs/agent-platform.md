@@ -142,6 +142,12 @@ messages expose their durable document citations, including the source filename
 and a short chunk preview, only after the same workspace-membership check used
 for the conversation.
 
+Text, Markdown, and HTML pass through a server-side extraction port before
+chunking. The built-in HTML extractor removes script and style content; PDF and
+DOCX must be connected through a host parser plus malware-scanning adapter,
+then follow the same queued index-run path. Do not extract binary office files
+in the browser.
+
 ## Operations, retention, and roles
 
 `workspace_member.role` is enforced on every query. Members can use their
@@ -162,6 +168,16 @@ The **색인 요청** action is a safe local retry: it creates an auditable inde
 re-embeds the document chunks, then records `completed` or a bounded `failed`
 error. Cloud index runs remain queued for the host application's workflow port.
 
+## Retrieval evaluation
+
+Owners can register a reviewed question with one or more expected chunk IDs and
+run a deterministic retrieval evaluation. Each result records citation recall
+(`expected chunks retrieved / expected chunks`) and the retrieved chunk IDs;
+it does not grade generated prose or silently alter knowledge. `evaluation_case`,
+`evaluation_run`, and `evaluation_result` are durable, workspace-scoped records.
+The weekly Step Functions definition can invoke this same boundary after a host
+selects approved cases.
+
 ## Optional cloud adapters
 
 `@arlequins/agent-bedrock` and `@arlequins/agent-s3-vectors` are SDK-free ports:
@@ -169,6 +185,13 @@ the deploying application injects its Bedrock Converse and S3 Vectors client.
 They add no cloud credentials, infrastructure, or provider imports to the local
 runtime. Wire them only after selecting a model, index, IAM role, budget, and
 data residency policy; the local Ollama/PostgreSQL path stays the default.
+
+Use a dedicated runtime role, never the CI deployment role. Start from
+[`iam/agent-runtime-policy.json`](./iam/agent-runtime-policy.json), replace all
+placeholders with one approved Bedrock model, source-object prefix, and vector
+index, then validate the resulting actions against CloudTrail in a sandbox. The
+policy intentionally contains no wildcard actions or resources. Do not attach
+write access to the source-document bucket to a retrieval-only runtime.
 
 Ollama values are not included in `LambdaEnvironment`, so this local default is
 unavailable after an AWS deployment unless a separate provider adapter is
