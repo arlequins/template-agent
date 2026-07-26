@@ -79,9 +79,10 @@ Start PostgreSQL, apply migrations and seeds, and launch the local OIDC provider
 API, and web app:
 
 ```bash
-ollama pull qwen2.5:3b
-cp .env.localhost.example .env.localhost
 pnpm install
+pnpm agent:setup
+ollama pull qwen2.5:3b
+ollama pull nomic-embed-text
 pnpm dev:local
 ```
 
@@ -89,7 +90,10 @@ Open `http://localhost:3000`. The development identity provider accepts any
 non-empty username and password. After signing in, create a workspace, start a
 conversation, optionally register text knowledge, then send a question. The
 default local model is `qwen2.5:3b`; run `ollama serve` if the Ollama service is
-not already running. PostgreSQL uses host port `55433` by default. Stop the
+not already running. `nomic-embed-text` enables semantic document retrieval;
+when it is unavailable, the application safely falls back to keyword search.
+Alternatively run `docker compose --profile ollama up -d ollama` (native Ollama
+is generally faster on Apple Silicon). PostgreSQL uses host port `55433` by default. Stop the
 database with `pnpm db:stop`.
 
 The API endpoints are:
@@ -109,6 +113,7 @@ for provider configuration.
 | Command | Purpose |
 | --- | --- |
 | `pnpm dev:local` | Start the complete local application stack. |
+| `pnpm agent:setup` | Create `.env.localhost` without overwriting an existing local configuration. |
 | `pnpm dev` | Run development tasks when dependencies are already available. |
 | `pnpm dev:sst` | Run web, API, and batch through cloud-backed SST development. |
 | `pnpm check` / `pnpm check:fix` | Check or fix Biome formatting and lint rules. |
@@ -140,6 +145,18 @@ backup, restore, and deployment ordering.
 
 Application code should access validated environment values through `@arlequins/env`
 instead of reading `process.env` throughout the codebase.
+
+## Local RAG and workspace operations
+
+The local agent accepts `.txt` and `.md` documents up to 1MB. It chunks them,
+creates local Ollama embeddings when `nomic-embed-text` is available, and stores
+citations with every assistant response. If that optional embedding model is
+offline, safe workspace-scoped keyword retrieval remains available.
+
+Workspace owners manage members, document deletion, memory review, retention,
+and the audit trail. Members can only act within workspaces where they have a
+membership. See [Agent Platform](./docs/agent-platform.md) for the data model,
+retention boundary, Docker Ollama profile, and optional cloud adapters.
 
 ## Template Qualification
 

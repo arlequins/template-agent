@@ -1,4 +1,5 @@
 import type {
+  EmbeddingProviderPort,
   KnowledgeSearchPort,
   MemorySearchPort,
 } from "@arlequins/agent-core";
@@ -11,6 +12,20 @@ import {
 import { type AnyColumn, and, desc, eq, ilike, isNull, or } from "drizzle-orm";
 
 const MAX_RESULTS = 6;
+const cosine = (left: number[], right: number[]) => {
+  if (left.length === 0 || left.length !== right.length) return 0;
+  let dot = 0;
+  let leftNorm = 0;
+  let rightNorm = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    const l = left[index] ?? 0;
+    const r = right[index] ?? 0;
+    dot += l * r;
+    leftNorm += l * l;
+    rightNorm += r * r;
+  }
+  return leftNorm && rightNorm ? dot / Math.sqrt(leftNorm * rightNorm) : 0;
+};
 const pattern = (query: string) => `%${query.replace(/[\\%_]/g, "\\$&")}%`;
 
 function queryTerms(query: string) {
@@ -52,9 +67,61 @@ export function createDatabaseMemorySearch(
 
 export function createDatabaseKnowledgeSearch(
   database: Database,
+  options: { embedding?: EmbeddingProviderPort } = {},
 ): KnowledgeSearchPort {
   return {
     search: async ({ query, workspaceId }) => {
+      if (options.embedding) {
+        try {
+          const [queryEmbedding] = await options.embedding.embed({
+            input: [query],
+          });
+          if (queryEmbedding) {
+            const vectorRows = await database
+              .select({
+                chunkId: DocumentChunk.id,
+                content: DocumentChunk.content,
+                documentId: Document.id,
+                embedding: DocumentChunk.embedding,
+                label: Document.filename,
+                locator: DocumentChunk.locator,
+              })
+              .from(DocumentChunk)
+              .innerJoin(Document, eq(DocumentChunk.documentId, Document.id))
+              .where(
+                and(
+                  eq(Document.workspaceId, workspaceId),
+                  eq(Document.status, "completed"),
+                  isNull(Document.deletedAt),
+                ),
+              );
+            const ranked = vectorRows
+              .filter((row): row is typeof row & { embedding: number[] } =>
+                Array.isArray(row.embedding),
+              )
+              .map((row) => ({
+                ...row,
+                score: cosine(queryEmbedding, row.embedding),
+              }))
+              .filter((row) => row.score > 0.2)
+              .sort((left, right) => right.score - left.score)
+              .slice(0, MAX_RESULTS);
+            if (ranked.length > 0)
+              return ranked.map((row) => ({
+                citation: {
+                  chunkId: row.chunkId,
+                  documentId: row.documentId,
+                  label: row.label,
+                  ...(row.locator ? { locator: row.locator } : {}),
+                },
+                content: row.content,
+                score: row.score,
+              }));
+          }
+        } catch {
+          // Local retrieval must remain usable when the optional embedding model is not pulled.
+        }
+      }
       const rows = await database
         .select({
           chunkId: DocumentChunk.id,

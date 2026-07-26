@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Database } from "@arlequins/db-backbone/client";
 import {
+  AuditLog,
   Conversation,
   Document,
   DocumentChunk,
@@ -13,7 +14,7 @@ import {
   Workspace,
   WorkspaceMember,
 } from "@arlequins/db-backbone/schema";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, count, desc, eq, isNull, lt } from "drizzle-orm";
 
 export type WorkspaceActor = { userId: string; workspaceId: string };
 
@@ -33,8 +34,39 @@ export function createAgentPlatformRepository(database: Database) {
     if (!membership) throw new Error("Workspace membership is required");
   }
 
+  async function assertOwner(actor: WorkspaceActor): Promise<void> {
+    const [membership] = await database
+      .select({ role: WorkspaceMember.role })
+      .from(WorkspaceMember)
+      .where(
+        and(
+          eq(WorkspaceMember.workspaceId, actor.workspaceId),
+          eq(WorkspaceMember.userId, actor.userId),
+          eq(WorkspaceMember.role, "owner"),
+        ),
+      )
+      .limit(1);
+    if (!membership) throw new Error("Workspace owner role is required");
+  }
+
+  async function audit(
+    actor: WorkspaceActor,
+    action: string,
+    subjectId?: string,
+    metadata?: Record<string, unknown>,
+  ) {
+    await database.insert(AuditLog).values({
+      action,
+      actorUserId: actor.userId,
+      ...(metadata ? { metadata } : {}),
+      ...(subjectId ? { subjectId } : {}),
+      workspaceId: actor.workspaceId,
+    });
+  }
+
   return {
     assertMember,
+    assertOwner,
     async createWorkspace(input: {
       name: string;
       slug: string;
@@ -67,6 +99,23 @@ export function createAgentPlatformRepository(database: Database) {
         .innerJoin(Workspace, eq(WorkspaceMember.workspaceId, Workspace.id))
         .where(eq(WorkspaceMember.userId, userId))
         .orderBy(Workspace.name);
+    },
+    async addWorkspaceMember(
+      actor: WorkspaceActor,
+      userId: string,
+      role: "member" | "owner",
+    ) {
+      await assertOwner(actor);
+      const [membership] = await database
+        .insert(WorkspaceMember)
+        .values({ role, userId, workspaceId: actor.workspaceId })
+        .onConflictDoUpdate({
+          target: [WorkspaceMember.workspaceId, WorkspaceMember.userId],
+          set: { role },
+        })
+        .returning();
+      await audit(actor, "workspace.member.updated", userId, { role });
+      return membership;
     },
     async createConversation(actor: WorkspaceActor, title?: string) {
       await assertMember(actor);
@@ -225,7 +274,7 @@ export function createAgentPlatformRepository(database: Database) {
         .orderBy(desc(Document.createdAt));
     },
     async deleteDocument(actor: WorkspaceActor, documentId: string) {
-      await assertMember(actor);
+      await assertOwner(actor);
       const [document] = await database
         .update(Document)
         .set({ deletedAt: new Date(), status: "deleted" })
@@ -239,7 +288,37 @@ export function createAgentPlatformRepository(database: Database) {
         .returning({ id: Document.id });
       if (!document)
         throw new Error("Document was not found in this workspace");
+      await audit(actor, "document.deleted", document.id);
       return document;
+    },
+    async listDocumentChunks(actor: WorkspaceActor, documentId: string) {
+      await assertMember(actor);
+      return database
+        .select({ content: DocumentChunk.content, id: DocumentChunk.id })
+        .from(DocumentChunk)
+        .innerJoin(Document, eq(DocumentChunk.documentId, Document.id))
+        .where(
+          and(
+            eq(DocumentChunk.documentId, documentId),
+            eq(Document.workspaceId, actor.workspaceId),
+            isNull(Document.deletedAt),
+          ),
+        )
+        .orderBy(DocumentChunk.ordinal);
+    },
+    async setChunkEmbeddings(
+      actor: WorkspaceActor,
+      input: Array<{ embedding: number[]; id: string }>,
+    ) {
+      await assertMember(actor);
+      await database.transaction(async (tx) => {
+        for (const chunk of input) {
+          await tx
+            .update(DocumentChunk)
+            .set({ embedding: chunk.embedding })
+            .where(eq(DocumentChunk.id, chunk.id));
+        }
+      });
     },
     async listIndexRuns(actor: WorkspaceActor, documentId?: string) {
       await assertMember(actor);
@@ -340,7 +419,7 @@ export function createAgentPlatformRepository(database: Database) {
       actor: WorkspaceActor,
       input: { memoryId: string; status: "approved" | "rejected" },
     ) {
-      await assertMember(actor);
+      await assertOwner(actor);
       const [memory] = await database
         .update(MemoryRecord)
         .set({ reviewedAt: new Date(), status: input.status })
@@ -352,7 +431,54 @@ export function createAgentPlatformRepository(database: Database) {
         )
         .returning();
       if (!memory) throw new Error("Memory was not found in this workspace");
+      await audit(actor, `memory.${input.status}`, memory.id);
       return memory;
+    },
+    async listMemories(actor: WorkspaceActor) {
+      await assertMember(actor);
+      return database
+        .select({
+          content: MemoryRecord.content,
+          createdAt: MemoryRecord.createdAt,
+          expiresAt: MemoryRecord.expiresAt,
+          id: MemoryRecord.id,
+          importance: MemoryRecord.importance,
+          status: MemoryRecord.status,
+        })
+        .from(MemoryRecord)
+        .where(eq(MemoryRecord.workspaceId, actor.workspaceId))
+        .orderBy(desc(MemoryRecord.createdAt));
+    },
+    async deleteMemory(actor: WorkspaceActor, memoryId: string) {
+      await assertOwner(actor);
+      const [memory] = await database
+        .delete(MemoryRecord)
+        .where(
+          and(
+            eq(MemoryRecord.id, memoryId),
+            eq(MemoryRecord.workspaceId, actor.workspaceId),
+          ),
+        )
+        .returning({ id: MemoryRecord.id });
+      if (!memory) throw new Error("Memory was not found in this workspace");
+      await audit(actor, "memory.deleted", memory.id);
+      return memory;
+    },
+    async purgeExpiredMemories(actor: WorkspaceActor) {
+      await assertOwner(actor);
+      const removed = await database
+        .delete(MemoryRecord)
+        .where(
+          and(
+            eq(MemoryRecord.workspaceId, actor.workspaceId),
+            lt(MemoryRecord.expiresAt, new Date()),
+          ),
+        )
+        .returning({ id: MemoryRecord.id });
+      await audit(actor, "memory.expired.purged", undefined, {
+        count: removed.length,
+      });
+      return { count: removed.length };
     },
     async createIndexRun(
       actor: WorkspaceActor,
@@ -376,6 +502,36 @@ export function createAgentPlatformRepository(database: Database) {
         .insert(IndexRun)
         .values({ documentId, provider, workspaceId: actor.workspaceId })
         .returning();
+      return run;
+    },
+    async finishIndexRun(
+      actor: WorkspaceActor,
+      input: {
+        error?: string;
+        indexRunId: string;
+        status: "completed" | "failed";
+      },
+    ) {
+      await assertMember(actor);
+      const [run] = await database
+        .update(IndexRun)
+        .set({
+          ...(input.error ? { error: input.error.slice(0, 1_000) } : {}),
+          completedAt: new Date(),
+          startedAt: new Date(),
+          status: input.status,
+        })
+        .where(
+          and(
+            eq(IndexRun.id, input.indexRunId),
+            eq(IndexRun.workspaceId, actor.workspaceId),
+          ),
+        )
+        .returning();
+      if (!run) throw new Error("Index run was not found in this workspace");
+      await audit(actor, `index.${input.status}`, run.id, {
+        provider: run.provider,
+      });
       return run;
     },
     async submitFeedback(
@@ -418,6 +574,48 @@ export function createAgentPlatformRepository(database: Database) {
             : [];
         return { feedback, investigation };
       });
+    },
+    async listAuditLog(actor: WorkspaceActor) {
+      await assertOwner(actor);
+      return database
+        .select({
+          action: AuditLog.action,
+          createdAt: AuditLog.createdAt,
+          metadata: AuditLog.metadata,
+          subjectId: AuditLog.subjectId,
+        })
+        .from(AuditLog)
+        .where(eq(AuditLog.workspaceId, actor.workspaceId))
+        .orderBy(desc(AuditLog.createdAt))
+        .limit(100);
+    },
+    async workspaceUsage(actor: WorkspaceActor) {
+      await assertMember(actor);
+      const [[documents], [messages], [memories]] = await Promise.all([
+        database
+          .select({ count: count() })
+          .from(Document)
+          .where(
+            and(
+              eq(Document.workspaceId, actor.workspaceId),
+              isNull(Document.deletedAt),
+            ),
+          ),
+        database
+          .select({ count: count() })
+          .from(Message)
+          .innerJoin(Conversation, eq(Message.conversationId, Conversation.id))
+          .where(eq(Conversation.workspaceId, actor.workspaceId)),
+        database
+          .select({ count: count() })
+          .from(MemoryRecord)
+          .where(eq(MemoryRecord.workspaceId, actor.workspaceId)),
+      ]);
+      return {
+        documents: documents?.count ?? 0,
+        memories: memories?.count ?? 0,
+        messages: messages?.count ?? 0,
+      };
     },
   };
 }

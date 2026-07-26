@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { createOllamaModelProvider } from "./index";
+import {
+  createOllamaEmbeddingProvider,
+  createOllamaModelProvider,
+} from "./index";
 
 describe("createOllamaModelProvider", () => {
   it("streams Ollama chat chunks and uses the configured local model", async () => {
@@ -40,5 +43,27 @@ describe("createOllamaModelProvider", () => {
     expect(() =>
       createOllamaModelProvider({ baseUrl: "https://example.com" }),
     ).toThrow("loopback");
+  });
+
+  it("embeds batches through the local Ollama endpoint", async () => {
+    const provider = createOllamaEmbeddingProvider({
+      baseUrl: "http://localhost:11434",
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            embeddings: [
+              [0.1, 0.2],
+              [0.3, 0.4],
+            ],
+          }),
+        ),
+      model: "nomic-embed-text",
+    });
+    await expect(
+      provider.embed({ input: ["first", "second"] }),
+    ).resolves.toEqual([
+      [0.1, 0.2],
+      [0.3, 0.4],
+    ]);
   });
 });

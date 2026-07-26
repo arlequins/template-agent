@@ -1,4 +1,5 @@
 import type {
+  EmbeddingProviderPort,
   KnowledgeSearchPort,
   MemorySearchPort,
   ModelProviderPort,
@@ -13,6 +14,7 @@ export type TRPCServices = {
   fileUpload?: FileUploadService;
   agent: ReturnType<typeof createAgentPlatformRepository>;
   model?: ModelProviderPort;
+  embedding?: EmbeddingProviderPort;
   knowledgeSearch: KnowledgeSearchPort;
   memorySearch: MemorySearchPort;
 };

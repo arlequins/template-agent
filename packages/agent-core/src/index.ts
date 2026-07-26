@@ -1,6 +1,7 @@
 export type {
   AgentWorkflowPort,
   DocumentSourcePort,
+  EmbeddingProviderPort,
   KnowledgeSearchPort,
   MemorySearchPort,
   ModelProviderPort,

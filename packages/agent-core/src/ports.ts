@@ -20,6 +20,11 @@ export type ModelProviderPort = {
   streamText(input: StreamTextRequest): AsyncIterable<string>;
 };
 
+/** Generates local or provider-hosted embeddings. Keep this separate from text generation. */
+export type EmbeddingProviderPort = {
+  embed(input: { input: string[] }): Promise<number[][]>;
+};
+
 /** Boundary for object storage. Implement with filesystem in local development or S3 in AWS. */
 export type DocumentSourcePort = {
   read(input: { sourceUri: string; workspaceId: string }): Promise<Uint8Array>;

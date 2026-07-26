@@ -65,6 +65,7 @@ export function AgentChat() {
   const [conversationId, setConversationId] = useState<string>();
   const [workspaceName, setWorkspaceName] = useState("");
   const [documentContent, setDocumentContent] = useState("");
+  const [documentFileError, setDocumentFileError] = useState<string>();
   const [documentFilename, setDocumentFilename] = useState("notes.txt");
   const [memoryContent, setMemoryContent] = useState("");
   const [question, setQuestion] = useState("");
@@ -94,6 +95,17 @@ export function AgentChat() {
     ...trpc.agent.indexRuns.queryOptions({ workspaceId: workspaceId ?? "" }),
     enabled: Boolean(workspaceId),
   });
+  const memories = useQuery({
+    ...trpc.agent.memories.queryOptions({ workspaceId: workspaceId ?? "" }),
+    enabled: Boolean(workspaceId),
+  });
+  const usage = useQuery({
+    ...trpc.agent.usage.queryOptions({ workspaceId: workspaceId ?? "" }),
+    enabled: Boolean(workspaceId),
+  });
+  const isOwner =
+    workspaces.data?.find((workspace) => workspace.id === workspaceId)?.role ===
+    "owner";
 
   useEffect(() => {
     if (!workspaceId && workspaces.data?.[0])
@@ -171,6 +183,28 @@ export function AgentChat() {
       },
     }),
   );
+  const reviewMemory = useMutation(
+    trpc.agent.reviewMemory.mutationOptions({
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: trpc.agent.memories.queryKey({
+            workspaceId: workspaceId ?? "",
+          }),
+        });
+      },
+    }),
+  );
+  const deleteMemory = useMutation(
+    trpc.agent.deleteMemory.mutationOptions({
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: trpc.agent.memories.queryKey({
+            workspaceId: workspaceId ?? "",
+          }),
+        });
+      },
+    }),
+  );
   const submitFeedback = useMutation(
     trpc.agent.submitFeedback.mutationOptions(),
   );
@@ -196,6 +230,23 @@ export function AgentChat() {
       filename: documentFilename.trim(),
       workspaceId,
     });
+  }
+
+  async function selectDocumentFile(file?: File) {
+    setDocumentFileError(undefined);
+    if (!file) return;
+    if (!/\.(md|txt)$/i.test(file.name) && file.type !== "text/plain") {
+      setDocumentFileError(
+        "현재는 안전하게 텍스트와 Markdown 파일만 지원합니다.",
+      );
+      return;
+    }
+    if (file.size > 1_000_000) {
+      setDocumentFileError("문서는 1MB 이하여야 합니다.");
+      return;
+    }
+    setDocumentFilename(file.name);
+    setDocumentContent(await file.text());
   }
 
   function submitMemory(event: FormEvent<HTMLFormElement>) {
@@ -347,6 +398,12 @@ export function AgentChat() {
           </summary>
           <form className="mt-3 space-y-2" onSubmit={submitDocument}>
             <Input
+              accept=".md,.txt,text/plain"
+              aria-label="문서 파일 선택"
+              onChange={(event) => selectDocumentFile(event.target.files?.[0])}
+              type="file"
+            />
+            <Input
               aria-label="문서 이름"
               onChange={(event) => setDocumentFilename(event.target.value)}
               value={documentFilename}
@@ -368,6 +425,11 @@ export function AgentChat() {
             {ingestTextDocument.isError && (
               <p className="text-destructive text-xs">
                 {messageError(ingestTextDocument.error)}
+              </p>
+            )}
+            {documentFileError && (
+              <p className="text-destructive text-xs" role="alert">
+                {documentFileError}
               </p>
             )}
           </form>
@@ -428,6 +490,18 @@ export function AgentChat() {
               );
             })}
           </div>
+        </details>
+        <details className="mt-5 border-t pt-4">
+          <summary className="cursor-pointer text-sm font-medium">
+            운영 현황
+          </summary>
+          <p className="text-muted-foreground mt-2 text-xs">
+            문서 {usage.data?.documents ?? 0} · 메시지{" "}
+            {usage.data?.messages ?? 0} · 기억 {usage.data?.memories ?? 0}
+          </p>
+          <p className="text-muted-foreground mt-2 text-xs">
+            소유자만 문서 삭제와 기억 검토를 수행할 수 있습니다.
+          </p>
         </details>
       </aside>
       <div className="flex min-h-[34rem] flex-col rounded-xl border">
@@ -551,6 +625,60 @@ export function AgentChat() {
           <p className="text-muted-foreground mt-2 text-xs">
             후보 기억은 승인 API를 거친 뒤에만 답변 문맥으로 사용됩니다.
           </p>
+          {memories.data?.length ? (
+            <ul className="mt-3 space-y-2 text-xs">
+              {memories.data.map((memory) => (
+                <li className="rounded border p-2" key={memory.id}>
+                  <p>{memory.content}</p>
+                  <p className="text-muted-foreground mt-1">
+                    {memory.status} · 중요도 {memory.importance}
+                  </p>
+                  {isOwner && memory.status === "candidate" && workspaceId && (
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        className="text-muted-foreground hover:underline"
+                        onClick={() =>
+                          reviewMemory.mutate({
+                            memoryId: memory.id,
+                            status: "approved",
+                            workspaceId,
+                          })
+                        }
+                        type="button"
+                      >
+                        승인
+                      </button>
+                      <button
+                        className="text-muted-foreground hover:underline"
+                        onClick={() =>
+                          reviewMemory.mutate({
+                            memoryId: memory.id,
+                            status: "rejected",
+                            workspaceId,
+                          })
+                        }
+                        type="button"
+                      >
+                        거절
+                      </button>
+                      <button
+                        className="text-destructive hover:underline"
+                        onClick={() =>
+                          deleteMemory.mutate({
+                            memoryId: memory.id,
+                            workspaceId,
+                          })
+                        }
+                        type="button"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </details>
       </div>
     </section>

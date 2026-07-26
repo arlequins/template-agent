@@ -14,6 +14,15 @@ services:
       retries: 15
     volumes:
       - postgres-data:/var/lib/postgresql
+  # Optional local-only model service. Native Ollama on Apple Silicon is usually faster.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
 
 volumes:
   postgres-data:
+  ollama-data:

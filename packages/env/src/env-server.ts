@@ -125,6 +125,8 @@ export const serverEnv = createEnv({
     OLLAMA_BASE_URL: z.url().optional(),
     /** Pulled Ollama model tag; `qwen3:4b` is the low-memory default. */
     OLLAMA_MODEL: z.string().min(1).optional(),
+    /** Pulled local embedding model used by document retrieval. */
+    OLLAMA_EMBEDDING_MODEL: z.string().min(1).optional(),
   },
   runtimeEnv: {
     SST_STAGE: process.env.SST_STAGE,
@@ -181,6 +183,7 @@ export const serverEnv = createEnv({
     S3_UPLOAD_PREFIX: process.env.S3_UPLOAD_PREFIX,
     OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL,
     OLLAMA_MODEL: process.env.OLLAMA_MODEL,
+    OLLAMA_EMBEDDING_MODEL: process.env.OLLAMA_EMBEDDING_MODEL,
   },
   emptyStringAsUndefined: true,
   skipValidation: skipEnvValidation,

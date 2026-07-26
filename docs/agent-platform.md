@@ -22,9 +22,9 @@ added at the boundary:
 
 | Port | Local implementation | AWS implementation |
 | --- | --- | --- |
-| Model provider | Ollama or a deterministic test double | Amazon Bedrock |
+| Model provider | Ollama or a deterministic test double | Amazon Bedrock adapter |
 | Memory | PostgreSQL/Docker | Aurora PostgreSQL or a DynamoDB adapter |
-| Knowledge retrieval | PostgreSQL full-text/test fixtures | S3 source objects + S3 Vectors |
+| Knowledge retrieval | Ollama embeddings stored with authorized chunks, then keyword fallback | S3 source objects + S3 Vectors adapter |
 | Long-running work | direct local runner | Step Functions + Lambda |
 
 The API converts agent events into a streaming response. tRPC remains the typed
@@ -122,8 +122,12 @@ the same application service. Retrieved document chunks are saved as durable
 message citations before completion.
 
 Text documents are chunked locally and searched with PostgreSQL case-insensitive
-term matching. This is deliberately a minimal local RAG baseline, not semantic
-vector search. Memory starts as `candidate`; only `agent.reviewMemory` can mark
+term matching when the embedding model is unavailable. With
+`OLLAMA_EMBEDDING_MODEL=nomic-embed-text`, each new text or Markdown document is
+embedded locally through Ollama and cosine-ranked inside the authorized
+workspace. The vectors are stored alongside the relational chunk metadata, not
+in an unscoped browser cache. Pull it once with `ollama pull nomic-embed-text`.
+Memory starts as `candidate`; only an owner using `agent.reviewMemory` can mark
 it `approved`, and only approved, unexpired memories enter model context.
 
 ## Document operations
@@ -137,6 +141,34 @@ may route queued runs to the included Step Functions adapters. Assistant
 messages expose their durable document citations, including the source filename
 and a short chunk preview, only after the same workspace-membership check used
 for the conversation.
+
+## Operations, retention, and roles
+
+`workspace_member.role` is enforced on every query. Members can use their
+workspace, while owners alone can add or change members, remove documents,
+approve/reject/delete memories, purge expired memories, and read the audit log.
+The UI exposes safe text/Markdown file selection (1MB maximum), document state,
+citation previews, memory review, and workspace usage counts. Keep larger or
+binary formats behind a server-side parser and malware scan rather than sending
+them to the browser text reader.
+
+Migration `0004_agent-local-rag-operations.sql` adds local chunk embeddings and
+an append-only `audit_log`. `agent.usage` returns bounded operational counts and
+`agent.auditLog` returns the most recent 100 non-content audit events. A host
+may schedule `agent.purgeExpiredMemories`; it is intentionally not automatic in
+this template so retention remains an explicit product decision.
+
+The **색인 요청** action is a safe local retry: it creates an auditable index run,
+re-embeds the document chunks, then records `completed` or a bounded `failed`
+error. Cloud index runs remain queued for the host application's workflow port.
+
+## Optional cloud adapters
+
+`@arlequins/agent-bedrock` and `@arlequins/agent-s3-vectors` are SDK-free ports:
+the deploying application injects its Bedrock Converse and S3 Vectors client.
+They add no cloud credentials, infrastructure, or provider imports to the local
+runtime. Wire them only after selecting a model, index, IAM role, budget, and
+data residency policy; the local Ollama/PostgreSQL path stays the default.
 
 Ollama values are not included in `LambdaEnvironment`, so this local default is
 unavailable after an AWS deployment unless a separate provider adapter is

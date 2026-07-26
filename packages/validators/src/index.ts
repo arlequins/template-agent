@@ -88,3 +88,10 @@ export const reviewMemoryInputSchema = workspaceScopeInputSchema.extend({
   memoryId: z.uuid(),
   status: z.enum(["approved", "rejected"]),
 });
+export const memoryScopeInputSchema = workspaceScopeInputSchema.extend({
+  memoryId: z.uuid(),
+});
+export const addWorkspaceMemberInputSchema = workspaceScopeInputSchema.extend({
+  role: z.enum(["member", "owner"]).default("member"),
+  userId: z.uuid(),
+});

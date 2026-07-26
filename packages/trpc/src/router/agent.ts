@@ -1,5 +1,6 @@
 import {
   addMessageInputSchema,
+  addWorkspaceMemberInputSchema,
   completeAgentInputSchema,
   conversationScopeInputSchema,
   createConversationInputSchema,
@@ -8,6 +9,7 @@ import {
   createWorkspaceInputSchema,
   documentScopeInputSchema,
   ingestTextDocumentInputSchema,
+  memoryScopeInputSchema,
   messageCitationInputSchema,
   reviewMemoryInputSchema,
   startIndexInputSchema,
@@ -36,6 +38,15 @@ export const agentRouter = {
         ...input,
         userId: ctx.session.user.id,
       }),
+    ),
+  addWorkspaceMember: protectedProcedure
+    .input(addWorkspaceMemberInputSchema)
+    .mutation(({ ctx, input }) =>
+      ctx.services.agent.addWorkspaceMember(
+        actor(ctx.session.user.id, input.workspaceId),
+        input.userId,
+        input.role,
+      ),
     ),
   conversations: protectedProcedure
     .input(workspaceScopeInputSchema)
@@ -71,12 +82,35 @@ export const agentRouter = {
     }),
   ingestTextDocument: protectedProcedure
     .input(ingestTextDocumentInputSchema)
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { workspaceId, ...document } = input;
-      return ctx.services.agent.ingestTextDocument(
-        actor(ctx.session.user.id, workspaceId),
+      const actorInput = actor(ctx.session.user.id, workspaceId);
+      const created = await ctx.services.agent.ingestTextDocument(
+        actorInput,
         document,
       );
+      if (ctx.services.embedding) {
+        try {
+          const chunks = await ctx.services.agent.listDocumentChunks(
+            actorInput,
+            created.id,
+          );
+          const embeddings = await ctx.services.embedding.embed({
+            input: chunks.map((chunk) => chunk.content),
+          });
+          if (embeddings.length === chunks.length)
+            await ctx.services.agent.setChunkEmbeddings(
+              actorInput,
+              chunks.map((chunk, index) => ({
+                embedding: embeddings[index] ?? [],
+                id: chunk.id,
+              })),
+            );
+        } catch {
+          // Keyword retrieval is a deliberate local fallback when the embedding model is unavailable.
+        }
+      }
+      return created;
     }),
   documents: protectedProcedure
     .input(workspaceScopeInputSchema)
@@ -119,6 +153,28 @@ export const agentRouter = {
         memory,
       );
     }),
+  memories: protectedProcedure
+    .input(workspaceScopeInputSchema)
+    .query(({ ctx, input }) =>
+      ctx.services.agent.listMemories(
+        actor(ctx.session.user.id, input.workspaceId),
+      ),
+    ),
+  deleteMemory: protectedProcedure
+    .input(memoryScopeInputSchema)
+    .mutation(({ ctx, input }) =>
+      ctx.services.agent.deleteMemory(
+        actor(ctx.session.user.id, input.workspaceId),
+        input.memoryId,
+      ),
+    ),
+  purgeExpiredMemories: protectedProcedure
+    .input(workspaceScopeInputSchema)
+    .mutation(({ ctx, input }) =>
+      ctx.services.agent.purgeExpiredMemories(
+        actor(ctx.session.user.id, input.workspaceId),
+      ),
+    ),
   complete: protectedProcedure
     .input(completeAgentInputSchema)
     .mutation(async ({ ctx, input }) => {
@@ -158,13 +214,44 @@ export const agentRouter = {
   startIndex: protectedProcedure
     .input(startIndexInputSchema)
     .mutation(async ({ ctx, input }) => {
+      const actorInput = actor(ctx.session.user.id, input.workspaceId);
       const indexRun = await ctx.services.agent.createIndexRun(
-        actor(ctx.session.user.id, input.workspaceId),
+        actorInput,
         input.documentId,
         input.provider,
       );
-      // This is intentionally only an audit-safe command. A Step Functions adapter may be attached by the host app.
-      return indexRun;
+      if (!indexRun) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.provider !== "local" || !ctx.services.embedding)
+        return indexRun;
+      try {
+        const chunks = await ctx.services.agent.listDocumentChunks(
+          actorInput,
+          input.documentId,
+        );
+        const embeddings = await ctx.services.embedding.embed({
+          input: chunks.map((chunk) => chunk.content),
+        });
+        if (embeddings.length !== chunks.length)
+          throw new Error("Embedding response did not match document chunks");
+        await ctx.services.agent.setChunkEmbeddings(
+          actorInput,
+          chunks.map((chunk, index) => ({
+            embedding: embeddings[index] ?? [],
+            id: chunk.id,
+          })),
+        );
+        return ctx.services.agent.finishIndexRun(actorInput, {
+          indexRunId: indexRun.id,
+          status: "completed",
+        });
+      } catch (error) {
+        return ctx.services.agent.finishIndexRun(actorInput, {
+          error:
+            error instanceof Error ? error.message : "Local indexing failed",
+          indexRunId: indexRun.id,
+          status: "failed",
+        });
+      }
     }),
   indexRuns: protectedProcedure
     .input(workspaceScopeInputSchema)
@@ -182,4 +269,18 @@ export const agentRouter = {
         feedback,
       );
     }),
+  auditLog: protectedProcedure
+    .input(workspaceScopeInputSchema)
+    .query(({ ctx, input }) =>
+      ctx.services.agent.listAuditLog(
+        actor(ctx.session.user.id, input.workspaceId),
+      ),
+    ),
+  usage: protectedProcedure
+    .input(workspaceScopeInputSchema)
+    .query(({ ctx, input }) =>
+      ctx.services.agent.workspaceUsage(
+        actor(ctx.session.user.id, input.workspaceId),
+      ),
+    ),
 } satisfies TRPCRouterRecord;

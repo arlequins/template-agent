@@ -41,6 +41,8 @@ describe("public tRPC contract", () => {
   it("publishes workspace-scoped agent procedures", () => {
     expect(procedureNames(AppRouter._def.record.agent)).toEqual([
       "addMessage",
+      "addWorkspaceMember",
+      "auditLog",
       "complete",
       "conversations",
       "createConversation",
@@ -48,14 +50,18 @@ describe("public tRPC contract", () => {
       "createMemory",
       "createWorkspace",
       "deleteDocument",
+      "deleteMemory",
       "documents",
       "indexRuns",
       "ingestTextDocument",
+      "memories",
       "messageCitations",
       "messages",
+      "purgeExpiredMemories",
       "reviewMemory",
       "startIndex",
       "submitFeedback",
+      "usage",
       "workspaces",
     ]);
   });

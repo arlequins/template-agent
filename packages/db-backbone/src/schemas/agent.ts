@@ -141,6 +141,8 @@ export const DocumentChunk = agent.table(
     content: t.text().notNull(),
     locator: t.varchar({ length: 256 }),
     vectorRecordId: t.varchar({ length: 256 }),
+    /** Local embeddings live with their authorized chunk; cloud vector ids remain metadata. */
+    embedding: t.jsonb().$type<number[]>(),
     createdAt: t.timestamp({ withTimezone: true }).notNull().defaultNow(),
   }),
   (table) => [
@@ -235,5 +237,28 @@ export const IndexRun = agent.table(
   }),
   (table) => [
     index("index_run_workspace_status_idx").on(table.workspaceId, table.status),
+  ],
+);
+
+/** Immutable, workspace-scoped operational trail; do not put document content in this table. */
+export const AuditLog = agent.table(
+  "audit_log",
+  (t) => ({
+    id: t.uuid().primaryKey().defaultRandom(),
+    workspaceId: t
+      .uuid()
+      .notNull()
+      .references(() => Workspace.id, { onDelete: "cascade" }),
+    actorUserId: t.uuid().notNull(),
+    action: t.varchar({ length: 96 }).notNull(),
+    subjectId: t.uuid(),
+    metadata: t.jsonb(),
+    createdAt: t.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (table) => [
+    index("audit_log_workspace_created_idx").on(
+      table.workspaceId,
+      table.createdAt,
+    ),
   ],
 );

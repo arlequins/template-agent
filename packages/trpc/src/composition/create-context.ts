@@ -1,4 +1,7 @@
-import { createOllamaModelProvider } from "@arlequins/agent-ollama";
+import {
+  createOllamaEmbeddingProvider,
+  createOllamaModelProvider,
+} from "@arlequins/agent-ollama";
 import { authApi, provisionSessionUser } from "@arlequins/auth";
 import { db } from "@arlequins/db-backbone/client";
 import { serverEnv } from "@arlequins/env";
@@ -58,12 +61,25 @@ export async function createTRPCContext(
     session,
     services: {
       agent: createAgentPlatformRepository(db),
-      knowledgeSearch: createDatabaseKnowledgeSearch(db),
+      knowledgeSearch: createDatabaseKnowledgeSearch(db, {
+        embedding: serverEnv.OLLAMA_BASE_URL
+          ? createOllamaEmbeddingProvider({
+              baseUrl: serverEnv.OLLAMA_BASE_URL,
+              model: serverEnv.OLLAMA_EMBEDDING_MODEL,
+            })
+          : undefined,
+      }),
       memorySearch: createDatabaseMemorySearch(db),
       model: serverEnv.OLLAMA_BASE_URL
         ? createOllamaModelProvider({
             baseUrl: serverEnv.OLLAMA_BASE_URL,
             model: serverEnv.OLLAMA_MODEL,
+          })
+        : undefined,
+      embedding: serverEnv.OLLAMA_BASE_URL
+        ? createOllamaEmbeddingProvider({
+            baseUrl: serverEnv.OLLAMA_BASE_URL,
+            model: serverEnv.OLLAMA_EMBEDDING_MODEL,
           })
         : undefined,
       content: createContentService({

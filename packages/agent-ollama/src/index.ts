@@ -1,4 +1,5 @@
 import type {
+  EmbeddingProviderPort,
   ModelProviderPort,
   StreamTextRequest,
 } from "@arlequins/agent-core";
@@ -14,6 +15,7 @@ export type OllamaModelProviderOptions = {
 
 const DEFAULT_BASE_URL = "http://127.0.0.1:11434";
 const DEFAULT_MODEL = "qwen2.5:3b";
+const DEFAULT_EMBEDDING_MODEL = "nomic-embed-text";
 
 function normalizedLocalBaseUrl(value: string): string {
   const url = new URL(value);
@@ -99,7 +101,47 @@ export function createOllamaModelProvider(
   };
 }
 
+/** Local-only Ollama `/api/embed` adapter. `nomic-embed-text` is small and purpose-built for retrieval. */
+export function createOllamaEmbeddingProvider(
+  options: {
+    baseUrl?: string;
+    fetch?: typeof globalThis.fetch;
+    model?: string;
+    requestTimeoutMs?: number;
+  } = {},
+): EmbeddingProviderPort {
+  const baseUrl = normalizedLocalBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
+  const model = options.model?.trim() || DEFAULT_EMBEDDING_MODEL;
+  const fetchImpl = options.fetch ?? globalThis.fetch;
+  const requestTimeoutMs = options.requestTimeoutMs ?? 120_000;
+  return {
+    async embed({ input }) {
+      if (input.length === 0) return [];
+      const response = await fetchImpl(`${baseUrl}/api/embed`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ input, model }),
+        signal: AbortSignal.timeout(requestTimeoutMs),
+      });
+      if (!response.ok)
+        throw new Error(`Ollama embedding request failed (${response.status})`);
+      const result = (await response.json()) as { embeddings?: unknown };
+      if (
+        !Array.isArray(result.embeddings) ||
+        result.embeddings.some(
+          (embedding) =>
+            !Array.isArray(embedding) ||
+            embedding.some((value) => typeof value !== "number"),
+        )
+      )
+        throw new Error("Ollama returned invalid embeddings");
+      return result.embeddings as number[][];
+    },
+  };
+}
+
 export {
   DEFAULT_BASE_URL as DEFAULT_OLLAMA_BASE_URL,
+  DEFAULT_EMBEDDING_MODEL as DEFAULT_OLLAMA_EMBEDDING_MODEL,
   DEFAULT_MODEL as DEFAULT_OLLAMA_MODEL,
 };
