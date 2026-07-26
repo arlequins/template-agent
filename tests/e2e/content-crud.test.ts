@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-async function signIn(page: import("@playwright/test").Page) {
+async function signIn(page: import("@playwright/test").Page, login: string) {
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByPlaceholder("Enter any login").fill("local-user");
+  await page.getByPlaceholder("Enter any login").fill(login);
   await page.getByPlaceholder("and password").fill("local-password");
   await page.getByRole("button", { name: "Sign-in" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
@@ -25,7 +25,7 @@ test("creates an agent workspace and starts a conversation without horizontal ov
     ),
   ).toBe(true);
 
-  await signIn(page);
+  await signIn(page, `workspace-${suffix}`);
   await page.getByLabel("워크스페이스 이름").fill(workspaceName);
   await page.getByRole("button", { name: "만들기" }).click();
   await expect(page.locator("select")).toContainText(workspaceName);
