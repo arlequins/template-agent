@@ -15,7 +15,6 @@ release automation. Security policy and AWS trust configuration remain in
 | `Production deployment` | manual | Deploy one application through the protected `production` environment |
 | `Release` | successful `CI` on `main`, manual | Maintain the Release Please PR and create version tags |
 | `Publish tagged release` | `vX.Y.Z` tag push | Re-verify the tagged source and create the GitHub Release |
-| `AWS sandbox smoke` | manual, weekly | Exercise Function URL and API Gateway sandbox endpoints |
 | `Quickstart deployment qualification` | manual | Rename, validate, deploy, and remove a fresh full template |
 | `Baseline load test` | manual | Run the k6 baseline against an approved HTTPS target |
 
@@ -47,8 +46,6 @@ Set these repository variables when the associated workflow is enabled:
 | `AWS_PRODUCTION_ROLE_ARN` | Production deployment |
 | `AWS_PRODUCTION_SECRET_NAME` | Production runtime and SST environment |
 | `AWS_QUICKSTART_ROLE_ARN` | Generated-template cloud qualification |
-| `AWS_SMOKE_FUNCTION_URL` | Scheduled Function URL smoke test |
-| `AWS_SMOKE_GATEWAY_URL` | Scheduled API Gateway smoke test |
 | `LOAD_TEST_API_URL` | k6 baseline |
 | `DEPENDENCY_REVIEW_ENABLED` | Makes dependency-review findings blocking when set to `true` |
 
