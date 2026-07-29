@@ -6,7 +6,6 @@ const validInput = {
   application: "api",
   operation: "deploy",
   roleArn: "arn:aws:iam::123456789012:role/github-production",
-  secretName: "arn:aws:secretsmanager:us-east-1:123456789012:secret:app",
   stage: "production",
 };
 
@@ -42,10 +41,6 @@ describe("deployment input validation", () => {
     assert.throws(
       () => validateDeploymentInput({ ...validInput, roleArn: "" }),
       /role ARN is required/,
-    );
-    assert.throws(
-      () => validateDeploymentInput({ ...validInput, secretName: "" }),
-      /deployment secret name is required/,
     );
   });
 });

@@ -23,7 +23,13 @@ jobs:
       - name: Initialize a generic application
         run: pnpm template:init -- --name quickstart-app --scope @quickstart --domain quickstart.example.org --preset full --force
       - run: pnpm install --no-frozen-lockfile
-      - run: cp .env.example .env
+      - name: Write deployment environment
+        env:
+          DEPLOY_ENV_FILE: ${{ secrets.DEPLOY_ENV_FILE }}
+        run: |
+          test -n "$DEPLOY_ENV_FILE"
+          umask 077
+          printf '%s' "$DEPLOY_ENV_FILE" > .env
       - run: pnpm check:fix && pnpm check && pnpm test && pnpm typecheck && pnpm test:sst
       - name: Validate AWS configuration
         env:

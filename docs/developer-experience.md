@@ -58,4 +58,4 @@ Commit `.template/example-crud` together with an intentional example removal if 
 
 ## Generated Project Qualification
 
-CI qualifies generated full and minimal repositories without AWS credentials. The manual `Quickstart deployment qualification` workflow additionally renames a fresh template, validates it, assumes `AWS_QUICKSTART_ROLE_ARN` through GitHub OIDC, performs the first API and web deployment, and always removes the sandbox stage.
+CI qualifies generated full and minimal repositories without AWS credentials. The manual `Quickstart deployment qualification` workflow additionally renames a fresh template, writes the `quickstart` GitHub Environment's `DEPLOY_ENV_FILE` secret to the runner, validates it, assumes `AWS_QUICKSTART_ROLE_ARN` through GitHub OIDC, deploys API before web, and always removes the sandbox stage in reverse order.

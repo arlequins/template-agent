@@ -142,8 +142,9 @@ backup, restore, and deployment ordering.
 - `.env.localhost.example` is the complete local-stack configuration.
 - `.env.example` documents shared and cloud-oriented variables.
 - `pnpm env:check` verifies environment schemas and examples stay synchronized.
-- `pnpm env:pull` and `pnpm env:push` synchronize supported values with AWS
-  Secrets Manager.
+- `pnpm env:pull` and `pnpm env:push` are optional local tools for synchronizing
+  supported values with AWS Secrets Manager. CI/CD instead reads the
+  `DEPLOY_ENV_FILE` secret from its GitHub Environment.
 
 Application code should access validated environment values through `@arlequins/env`
 instead of reading `process.env` throughout the codebase.
