@@ -1,3 +1,5 @@
+# Copy this file to .github/workflows/aws-smoke.yml only after a derived
+# project has an approved, non-production AWS environment.
 name: AWS sandbox smoke
 
 on:
