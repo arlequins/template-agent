@@ -2,6 +2,13 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.0](https://github.com/arlequins/template-agent/compare/v0.3.0...v0.4.0) (2026-08-01)
+
+
+### Features
+
+* make S3 the default agent persistence ([#12](https://github.com/arlequins/template-agent/issues/12)) ([303bfa6](https://github.com/arlequins/template-agent/commit/303bfa637b8c6029d8fe276bcf89bc456d1ac9f8))
+
 ## [0.3.0](https://github.com/arlequins/template-agent/compare/v0.2.0...v0.3.0) (2026-07-26)
 
 
