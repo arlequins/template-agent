@@ -121,6 +121,21 @@ export const serverEnv = createEnv({
       .optional(),
     S3_UPLOAD_BUCKET: z.string().min(3).optional(),
     S3_UPLOAD_PREFIX: z.string().min(1).optional(),
+    /** Primary bucket for conversations, memory, documents, feedback, and reviewed releases. */
+    S3_AGENT_BUCKET: z.string().min(3).optional(),
+    /** Prefix isolating one application stage inside the primary bucket. */
+    S3_AGENT_PREFIX: z.string().min(1).optional(),
+    /** Optional S3-compatible endpoint for local development. */
+    S3_AGENT_ENDPOINT: z.url().optional(),
+    /** Required by local S3-compatible endpoints such as MinIO. */
+    S3_AGENT_FORCE_PATH_STYLE: z
+      .enum(["true", "false"])
+      .transform((value) => value === "true")
+      .optional(),
+    /** Optional paid production model. Omit to keep Bedrock disabled. */
+    BEDROCK_MODEL_ID: z.string().min(1).optional(),
+    /** Exact model or inference-profile ARN granted to the Lambda runtime. */
+    BEDROCK_MODEL_ARN: z.string().startsWith("arn:aws:bedrock:").optional(),
     /** Local-only Ollama endpoint. Omit to keep model completion disabled. */
     OLLAMA_BASE_URL: z.url().optional(),
     /** Pulled Ollama model tag; `qwen3:4b` is the low-memory default. */
@@ -181,6 +196,12 @@ export const serverEnv = createEnv({
     S3_CACHE_FORCE_PATH_STYLE: process.env.S3_CACHE_FORCE_PATH_STYLE,
     S3_UPLOAD_BUCKET: process.env.S3_UPLOAD_BUCKET,
     S3_UPLOAD_PREFIX: process.env.S3_UPLOAD_PREFIX,
+    S3_AGENT_BUCKET: process.env.S3_AGENT_BUCKET,
+    S3_AGENT_PREFIX: process.env.S3_AGENT_PREFIX,
+    S3_AGENT_ENDPOINT: process.env.S3_AGENT_ENDPOINT,
+    S3_AGENT_FORCE_PATH_STYLE: process.env.S3_AGENT_FORCE_PATH_STYLE,
+    BEDROCK_MODEL_ID: process.env.BEDROCK_MODEL_ID,
+    BEDROCK_MODEL_ARN: process.env.BEDROCK_MODEL_ARN,
     OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL,
     OLLAMA_MODEL: process.env.OLLAMA_MODEL,
     OLLAMA_EMBEDDING_MODEL: process.env.OLLAMA_EMBEDDING_MODEL,

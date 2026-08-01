@@ -1,4 +1,31 @@
 services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: template-local
+      MINIO_ROOT_PASSWORD: template-local-secret
+    ports:
+      - "${MINIO_API_PORT:-59000}:9000"
+      - "${MINIO_CONSOLE_PORT:-59001}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+    volumes:
+      - minio-data:/data
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        mc alias set template http://minio:9000 template-local template-local-secret &&
+        mc mb --ignore-existing template/template-agent
   postgres:
     image: postgres:18-alpine
     environment:
@@ -24,5 +51,6 @@ services:
       - ollama-data:/root/.ollama
 
 volumes:
+  minio-data:
   postgres-data:
   ollama-data:

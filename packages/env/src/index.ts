@@ -101,4 +101,16 @@ export const LambdaEnvironment = {
   ...(serverEnv.S3_UPLOAD_PREFIX
     ? { S3_UPLOAD_PREFIX: serverEnv.S3_UPLOAD_PREFIX }
     : {}),
+  ...(serverEnv.S3_AGENT_BUCKET
+    ? { S3_AGENT_BUCKET: serverEnv.S3_AGENT_BUCKET }
+    : {}),
+  ...(serverEnv.S3_AGENT_PREFIX
+    ? { S3_AGENT_PREFIX: serverEnv.S3_AGENT_PREFIX }
+    : {}),
+  ...(serverEnv.BEDROCK_MODEL_ID
+    ? { BEDROCK_MODEL_ID: serverEnv.BEDROCK_MODEL_ID }
+    : {}),
+  ...(serverEnv.BEDROCK_MODEL_ARN
+    ? { BEDROCK_MODEL_ARN: serverEnv.BEDROCK_MODEL_ARN }
+    : {}),
 };

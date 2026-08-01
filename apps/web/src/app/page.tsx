@@ -20,9 +20,9 @@ export default function HomePage() {
       {!user ? (
         <section className="mt-10 grid gap-4 sm:grid-cols-3">
           {[
-            ["Local first", "PostgreSQL, OIDC Mock, local model"],
+            ["Local first", "MinIO, OIDC Mock, local model"],
             ["Evidence", "Workspace-scoped retrieval and citations"],
-            ["Cost aware", "Aurora and Bedrock are explicit opt-ins"],
+            ["Cost aware", "S3 and Lambda by default; Bedrock is opt-in"],
           ].map(([title, description]) => (
             <article className="rounded-lg border p-4" key={title}>
               <h2 className="font-semibold">{title}</h2>

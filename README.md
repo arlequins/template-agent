@@ -1,13 +1,14 @@
 # template-agent
 
 A provider-neutral conversational AI-agent template built on
-`template-t3-turbo-sst`. It starts locally with PostgreSQL and the included OIDC
-mock, then adds AWS services only when a feature needs them.
+`template-t3-turbo-sst`. It starts locally with MinIO, Ollama, and the included
+OIDC mock, then adds AWS services only when a feature needs them.
 
 ## Cost-aware defaults
 
-- Local PostgreSQL and a local model are the default development path.
-- Aurora PostgreSQL is an optional SST application and is disabled by default.
+- Local S3-compatible storage and a local model are the default development path.
+- PostgreSQL and Aurora remain optional extension workspaces and are not required
+  by the default agent runtime.
 - Do not create a NAT Gateway, always-on container, or production database in a
   personal sandbox without an explicit decision.
 - Treat Amazon Bedrock inference as usage-priced, even when the surrounding AWS
@@ -26,10 +27,10 @@ and optional SST batch and deployment infrastructure.
 | Workspace | pnpm catalogs, Turborepo, TypeScript, Biome |
 | Web | Next.js App Router, client-only static export, React, Tailwind CSS |
 | API | Hono, tRPC, local Node.js server, AWS Lambda deployment |
-| Database | PostgreSQL, Drizzle ORM, migrations, and idempotent seeds |
+| Persistence | S3/MinIO immutable events, conditional read models, and reviewed releases |
 | Authentication | OpenID Connect Authorization Code with PKCE and JWT validation |
 | Infrastructure | SST Ion, CloudFront, Lambda, Step Functions, EventBridge |
-| Testing | Vitest, PostgreSQL integration tests, Playwright, accessibility checks |
+| Testing | Vitest, isolated MinIO integration tests, Playwright, accessibility checks |
 
 Internal packages use the placeholder scope `@arlequins/*`. The initializer replaces
 it when creating a project.
@@ -37,7 +38,7 @@ it when creating a project.
 ## Requirements
 
 - Node.js and pnpm versions matching [`package.json`](./package.json)
-- Docker for local PostgreSQL and end-to-end tests
+- Docker for local MinIO and end-to-end tests
 - AWS credentials only for cloud-backed SST commands
 
 Use the Node.js version in [`.nvmrc`](./.nvmrc). The preinstall check reports an
@@ -75,8 +76,7 @@ composition.
 
 ## Local Quickstart
 
-Start PostgreSQL, apply migrations and seeds, and launch the local OIDC provider,
-API, and web app:
+Start MinIO and launch the local OIDC provider, API, and web app:
 
 ```bash
 pnpm install
@@ -94,13 +94,13 @@ default local model is `qwen2.5:3b`; run `ollama serve` if the Ollama service is
 not already running. `nomic-embed-text` enables semantic document retrieval;
 when it is unavailable, the application safely falls back to keyword search.
 Alternatively run `docker compose --profile ollama up -d ollama` (native Ollama
-is generally faster on Apple Silicon). PostgreSQL uses host port `55433` by default. Stop the
-database with `pnpm db:stop`.
+is generally faster on Apple Silicon). MinIO uses API port `59000` and console
+port `59001` by default. Stop it with `pnpm storage:stop`.
 
 The API endpoints are:
 
 - Liveness: `http://localhost:5000/health/live`
-- PostgreSQL-backed readiness: `http://localhost:5000/health/ready`
+- S3-backed readiness: `http://localhost:5000/health/ready`
 - Interactive API explorer: `http://localhost:5000/docs`
 - OpenAPI document: `http://localhost:5000/openapi.json`
 - tRPC: `http://localhost:5000/api/trpc`
@@ -121,12 +121,13 @@ for provider configuration.
 | `pnpm check` / `pnpm check:fix` | Check or fix Biome formatting and lint rules. |
 | `pnpm typecheck` | Typecheck every workspace. |
 | `pnpm test` | Run unit and contract tests. |
-| `pnpm test:e2e` | Run isolated PostgreSQL and browser end-to-end tests. |
+| `pnpm test:e2e` | Run isolated MinIO and browser end-to-end tests. |
+| `pnpm storage:start` | Start MinIO and create the local agent bucket. |
 | `pnpm db:setup` | Apply committed migrations and pending seeds. |
 | `pnpm turbo gen` | Generate an application, package, or tRPC domain. |
 | `pnpm gen:feature` | Generate a clean-architecture command or query slice. |
 
-Database schema changes use:
+Optional PostgreSQL extension schema changes use:
 
 ```bash
 pnpm db:create-migration --name=describe_change
@@ -159,6 +160,10 @@ Workspace owners manage members, document deletion, memory review, retention,
 and the audit trail. Members can only act within workspaces where they have a
 membership. See [Agent Platform](./docs/agent-platform.md) for the data model,
 retention boundary, Docker Ollama profile, and optional cloud adapters.
+
+The default persistence model, concurrency rules, reviewed-release gate, and
+recovery procedure are documented in
+[S3-primary agent persistence](./docs/s3-primary-architecture.md).
 
 For a complete click-through local verification, see [Local agent demo](./docs/local-agent-demo.md).
 

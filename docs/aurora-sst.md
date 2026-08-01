@@ -38,12 +38,12 @@ and batch Lambdas to the VPC using the existing `SUBNET_IDS` and
 
 ## Cost profiles
 
-- **Local and free-tier-first:** keep Aurora disabled; use Docker PostgreSQL and
-  a local model. This is the default.
+- **Local and free-tier-first:** keep Aurora disabled; use MinIO-compatible
+  object storage and a local model. This is the default.
 - **Personal AWS proof of concept:** use low-request services first. Do not
   assume Bedrock model inference or Aurora capacity is free.
 - **Enterprise knowledge base:** enable Aurora when relational history,
   permissions, audit records, and complex retrieval justify it.
 
-The later `beat-agent` project should start with the first profile. Aurora is a
-supported upgrade path, not its default dependency.
+Generated personal-assistant projects should start with the first profile.
+Aurora is a supported relational upgrade path, not a default dependency.

@@ -47,7 +47,7 @@ This page is a durable context note for AI agents working in this repository.
 | `pnpm install`                    | Install workspace dependencies and run workspace checks. |
 | `pnpm build`                      | Build all workspaces through Turborepo.                  |
 | `pnpm dev`                        | Start development tasks in watch mode.                   |
-| `pnpm dev:local`                  | Start local PostgreSQL, OIDC, API, and web.               |
+| `pnpm dev:local`                  | Start local MinIO, OIDC, API, and web.                    |
 | `pnpm dev:next`                   | Start the web app and dependencies in watch mode.        |
 | `pnpm dev:sst`                    | Start web, API, and batch SST development tasks.         |
 | `pnpm check` / `pnpm check:fix`   | Run Biome lint, format, and assist checks.               |
@@ -56,7 +56,7 @@ This page is a durable context note for AI agents working in this repository.
 | `pnpm typecheck`                  | Run TypeScript checks.                                   |
 | `pnpm test`                       | Run workspace tests through Turborepo.                   |
 | `pnpm test:sst`                   | Validate SST providers and configs without AWS credentials. |
-| `pnpm test:e2e`                   | Run isolated PostgreSQL and browser E2E tests.            |
+| `pnpm test:e2e`                   | Run isolated MinIO and browser E2E tests.                 |
 | `pnpm template:init -- --dry-run …` | Preview safe repository and package renaming.             |
 | `pnpm db:start` / `pnpm db:stop`  | Start or stop the local PostgreSQL container.             |
 | `pnpm db:setup`                   | Apply migrations and then pending seeds.                 |
