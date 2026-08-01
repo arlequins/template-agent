@@ -7,12 +7,14 @@ local application; the pages below explain design decisions and ongoing work.
 ## Start Here
 
 1. [Application architecture](architecture.md) explains workspace boundaries
-   and the browser-to-database request flow.
-2. [Developer experience](developer-experience.md) covers generators, fast
+   and the browser-to-storage request flow.
+2. [S3-primary agent persistence](s3-primary-architecture.md) explains object
+   layout, conditional writes, reviewed releases, recovery, and cost controls.
+3. [Developer experience](developer-experience.md) covers generators, fast
    feedback commands, and template qualification.
-3. [Template readiness](template-readiness.md) lists the capabilities to retain
+4. [Template readiness](template-readiness.md) lists the capabilities to retain
    or deliberately remove when adapting the template.
-4. [Generic application baseline](generic-application.md) explains the reusable
+5. [Generic application baseline](generic-application.md) explains the reusable
    CRUD, authorization, upload, and Clean Architecture example.
 
 ## Development
