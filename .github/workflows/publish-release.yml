@@ -4,9 +4,14 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to verify (for example, v0.5.0)
+        required: true
+        type: string
 
 concurrency:
-  group: publish-release-${{ github.ref_name }}
+  group: publish-release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 permissions:
@@ -16,26 +21,29 @@ jobs:
   verify-and-publish:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      TAG_NAME: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
+          ref: ${{ inputs.tag || github.ref_name }}
       - uses: ./tooling/github/setup
       - name: Copy environment template
         run: cp .env.example .env
       - name: Verify semantic version tag
         shell: bash
         run: |
-          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
       - name: Verify release candidate
         run: pnpm check && pnpm typecheck && pnpm test && pnpm build && pnpm test:sst
       - name: Create GitHub Release when needed
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            echo "GitHub Release already exists for $GITHUB_REF_NAME"
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            echo "GitHub Release already exists for $TAG_NAME"
           else
-            gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+            gh release create "$TAG_NAME" --verify-tag --generate-notes
           fi
