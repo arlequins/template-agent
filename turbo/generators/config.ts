@@ -210,4 +210,34 @@ export default function generator(plop: PlopTypes.NodePlopAPI): void {
       },
     ],
   });
+
+  plop.setGenerator("slice", {
+    description: "Generate a web Feature-Sliced Design layer",
+    prompts: [
+      namePrompt,
+      {
+        type: "list",
+        name: "layer",
+        message: "Web layer",
+        choices: ["entities", "features", "widgets"],
+        default: "features",
+      },
+    ],
+    actions: [
+      {
+        type: "add",
+        path: "apps/web/src/{{ layer }}/{{ name }}/index.ts",
+        templateFile: "templates/slice/index.ts.hbs",
+      },
+      {
+        type: "add",
+        path: "apps/web/src/{{ layer }}/{{ name }}/README.md",
+        templateFile: "templates/slice/README.md.hbs",
+      },
+      () => {
+        execFileSync("pnpm", ["architecture:check"], { stdio: "inherit" });
+        return "Web slice scaffolded and architecture checked";
+      },
+    ],
+  });
 }
