@@ -2,6 +2,13 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.5.0](https://github.com/arlequins/template-agent/compare/v0.4.1...v0.5.0) (2026-08-22)
+
+
+### Features
+
+* add clean architecture seams and hidden thought filter ([eaa6044](https://github.com/arlequins/template-agent/commit/eaa60445404e5032d3463e56acb9b3a30d8725f1))
+
 ## [0.4.1](https://github.com/arlequins/template-agent/compare/v0.4.0...v0.4.1) (2026-08-22)
 
 
