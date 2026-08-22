@@ -1,5 +1,8 @@
 import type { Citation } from "@arlequins/agent-core";
-import { createAgentRuntime } from "@arlequins/agent-core";
+import {
+  createAgentRuntime,
+  createHiddenThoughtFilter,
+} from "@arlequins/agent-core";
 import type { AgentJobLease } from "../adaptors/agent-platform-s3";
 import type { TRPCServices } from "../context";
 
@@ -49,6 +52,7 @@ export async function* streamAgentCompletion(
       model: services.model,
     });
     const text: string[] = [];
+    const hiddenThoughtFilter = createHiddenThoughtFilter();
     let citations: Citation[] = [];
     for await (const event of runtime.run({
       history: history.slice(0, -1).map((message) => ({
@@ -70,8 +74,15 @@ export async function* streamAgentCompletion(
         continue;
       }
       if (event.type !== "text-delta") continue;
-      text.push(event.text);
-      yield { text: event.text, type: "delta" };
+      const safeText = hiddenThoughtFilter.push(event.text);
+      if (!safeText) continue;
+      text.push(safeText);
+      yield { text: safeText, type: "delta" };
+    }
+    const trailingText = hiddenThoughtFilter.flush();
+    if (trailingText) {
+      text.push(trailingText);
+      yield { text: trailingText, type: "delta" };
     }
     const content = text.join("").trim();
     if (!content) throw new Error("Model returned no text");

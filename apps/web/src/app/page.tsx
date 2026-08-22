@@ -2,7 +2,7 @@
 
 import { useAuth } from "~/auth/provider";
 import { AuthStatus } from "~/auth/status";
-import { AgentChat } from "~/components/agent-chat";
+import { AgentChat } from "~/widgets/agent-chat";
 
 export default function HomePage() {
   const { user } = useAuth();
