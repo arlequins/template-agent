@@ -2,6 +2,13 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.1](https://github.com/arlequins/template-agent/compare/v0.4.0...v0.4.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* preserve architecture migration guidance ([#16](https://github.com/arlequins/template-agent/issues/16)) ([882bb1d](https://github.com/arlequins/template-agent/commit/882bb1d46bfa1c2c91aba1e29b4830b617a18f9a))
+
 ## [0.4.0](https://github.com/arlequins/template-agent/compare/v0.3.0...v0.4.0) (2026-08-01)
 
 
