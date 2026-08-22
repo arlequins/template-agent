@@ -48,3 +48,6 @@ should use the slice directories and move one cohesive feature at a time.
 4. Wire the adapter in a composition root.
 5. Keep HTTP/UI delivery thin and add a contract test.
 6. Run `pnpm check`, `pnpm typecheck`, and `pnpm architecture:check`.
+
+Treat compatibility barrels as temporary seams: remove one only after an
+import search is empty and the slice's boundary test is in place.
