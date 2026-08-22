@@ -50,6 +50,7 @@ try {
     ["package", "generated-package"],
     ["domain", "order-history"],
     ["feature", "inventory-query", "query"],
+    ["slice", "analytics-panel", "widgets"],
   ]) {
     run(pnpm, ["turbo", "gen", generator, "--args", ...args]);
   }
@@ -72,6 +73,13 @@ try {
   );
   if (!featureRouter.includes(".query(")) {
     throw new Error("Generated query feature used the wrong procedure kind");
+  }
+  const sliceReadme = await readFile(
+    resolve(target, "apps/web/src/widgets/analytics-panel/README.md"),
+    "utf8",
+  );
+  if (!sliceReadme.includes("widgets slice")) {
+    throw new Error("Generated web slice did not preserve its layer contract");
   }
   console.log(
     "Application, package, domain, and feature generators passed qualification.",

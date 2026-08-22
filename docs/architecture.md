@@ -4,6 +4,9 @@ This template keeps policy independent from delivery frameworks and providers.
 The example content slice is intentionally small, but it demonstrates the same
 dependency direction expected from production features.
 
+The incremental migration rules for server layers and web slices are in the
+[feature-sliced architecture guide](architecture-migration.md).
+
 ```text
 apps/web -> tRPC router -> application use case -> port <- adapter
 apps/api ------^                                      <- S3 / OIDC / model provider
@@ -108,3 +111,9 @@ building and deploying the web app.
 - Add Drizzle tables under `packages/db-backbone/src/schemas` only for optional relational extensions.
 - Centralize environment parsing in `@arlequins/env` and update examples plus `turbo.json`.
 - Commit a migration for every schema change and numbered seeds for data changes.
+
+### Web Feature-Sliced Design
+
+Routes in `apps/web/src/app` should compose widgets instead of owning business
+state. New code belongs in `shared`, `entities`, `features`, or `widgets`, in
+that dependency order. Compatibility barrels may remain while a slice moves.

@@ -42,6 +42,8 @@ Run `pnpm turbo gen` and select one of these generators:
 Names must be lowercase kebab-case. The active package scope is read from the initialized workspace instead of being hard-coded.
 
 Use `pnpm gen:feature`, enter a feature name, and select `command` or `query`.
+Use `pnpm turbo gen slice` to scaffold a web `entities`, `features`, or
+`widgets` slice with its dependency-direction note.
 The generator registers the router, updates the public contract, formats the
 result, and runs the architecture boundary check. Replace the generated message
 input and pass-through adapter with domain-specific types and infrastructure;
