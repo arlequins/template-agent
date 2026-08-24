@@ -3,14 +3,14 @@ name: Production deployment
 on:
   workflow_dispatch:
     inputs:
-      application:
-        description: Application to deploy
-        required: true
-        type: choice
-        options: [api, web, batch]
+      include_batch:
+        description: Deploy the optional batch application after API and web
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
-  group: production-${{ inputs.application }}
+  group: production-deployment
   cancel-in-progress: false
 
 permissions:
@@ -18,11 +18,32 @@ permissions:
   id-token: write
 
 jobs:
-  deploy:
+  deploy-api:
     uses: ./.github/workflows/deploy-reusable.yml
     with:
-      application: ${{ inputs.application }}
+      application: api
       environment: production
+      stage: production
       operation: deploy
       role_arn: ${{ vars.AWS_PRODUCTION_ROLE_ARN }}
-      secret_name: ${{ vars.AWS_PRODUCTION_SECRET_NAME }}
+
+  deploy-web:
+    needs: deploy-api
+    uses: ./.github/workflows/deploy-reusable.yml
+    with:
+      application: web
+      environment: production
+      stage: production
+      operation: deploy
+      role_arn: ${{ vars.AWS_PRODUCTION_ROLE_ARN }}
+
+  deploy-batch:
+    if: inputs.include_batch
+    needs: deploy-web
+    uses: ./.github/workflows/deploy-reusable.yml
+    with:
+      application: batch
+      environment: production
+      stage: production
+      operation: deploy
+      role_arn: ${{ vars.AWS_PRODUCTION_ROLE_ARN }}

@@ -60,9 +60,7 @@ its related code, tests, environment variables, and documentation.
 - [x] Initializer tests on Linux, macOS, and Windows.
 - [x] PostgreSQL migration upgrades and tRPC contract regression tests.
 - [x] Chromium and mobile-emulated Playwright authentication and accessibility coverage.
-- [x] AWS sandbox smoke tests and a documented load-test policy.
-- [x] Required sandbox endpoint variables with manual workflow overrides and
-  visible failure when cloud qualification is not configured.
+- [x] A documented load-test policy for derived deployments.
 - [x] Environment schema synchronization and changed-workspace checks.
 - [x] Optional OpenTelemetry export, component testing, Storybook, and an
   S3-backed application cache are available as reusable building blocks.

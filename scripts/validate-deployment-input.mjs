@@ -16,7 +16,6 @@ export function validateDeploymentInput(input) {
   const operation = required(input.operation, "operation");
   const stage = required(input.stage, "stage");
   const roleArn = required(input.roleArn, "role ARN");
-  const secretName = required(input.secretName, "deployment secret name");
 
   if (!APPLICATIONS.has(application)) {
     throw new Error("application must be api, batch, or web");
@@ -32,15 +31,7 @@ export function validateDeploymentInput(input) {
   if (!ROLE_ARN_PATTERN.test(roleArn)) {
     throw new Error("role ARN must identify an AWS IAM role");
   }
-  const hasControlCharacter = [...secretName].some((character) => {
-    const code = character.codePointAt(0) ?? 0;
-    return code < 32 || code === 127;
-  });
-  if (secretName.length > 512 || hasControlCharacter) {
-    throw new Error("deployment secret name contains invalid characters");
-  }
-
-  return { application, operation, roleArn, secretName, stage };
+  return { application, operation, roleArn, stage };
 }
 
 function main() {
@@ -48,7 +39,6 @@ function main() {
     application: process.env.DEPLOY_APPLICATION,
     operation: process.env.DEPLOY_OPERATION,
     roleArn: process.env.DEPLOY_ROLE_ARN,
-    secretName: process.env.DEPLOY_SECRET_NAME,
     stage: process.env.DEPLOY_STAGE,
   });
   console.log("Deployment inputs are valid.");

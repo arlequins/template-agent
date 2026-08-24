@@ -14,7 +14,8 @@ Use Vitest.
 - Use PostgreSQL integration tests for migrations, seeds, adapters, and
   representative service paths.
 - Use Playwright for browser authentication and critical user journeys.
-- Keep AWS sandbox smoke tests separate from credential-free pull-request jobs.
+- Keep cloud-backed smoke tests out of credential-free pull-request jobs in
+  derived deployments.
 
 Operational details and the flaky-test policy live in
 [Test Operations](../testing-operations.md).
