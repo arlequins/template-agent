@@ -2,6 +2,13 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.5.1](https://github.com/arlequins/template-agent/compare/v0.5.0...v0.5.1) (2026-10-01)
+
+
+### Bug Fixes
+
+* skip sandbox smoke when endpoints are unconfigured ([#22](https://github.com/arlequins/template-agent/issues/22)) ([72724e6](https://github.com/arlequins/template-agent/commit/72724e6f90fdd776a6ad045fb23b05ea6ac8f4cd))
+
 ## [0.5.0](https://github.com/arlequins/template-agent/compare/v0.4.1...v0.5.0) (2026-08-22)
 
 
