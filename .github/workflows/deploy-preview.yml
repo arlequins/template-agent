@@ -13,30 +13,34 @@ permissions:
   id-token: write
 
 jobs:
-  deploy:
+  deploy-api:
     if: >-
       github.event.action != 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      vars.AWS_PREVIEW_ROLE_ARN != '' &&
-      vars.AWS_PREVIEW_SECRET_NAME != ''
-    strategy:
-      fail-fast: false
-      matrix:
-        application: [api, web]
+      vars.AWS_PREVIEW_ROLE_ARN != ''
     uses: ./.github/workflows/deploy-reusable.yml
     with:
-      application: ${{ matrix.application }}
-      environment: pr-${{ github.event.pull_request.number }}
+      application: api
+      environment: preview
+      stage: pr-${{ github.event.pull_request.number }}
       operation: deploy
       role_arn: ${{ vars.AWS_PREVIEW_ROLE_ARN }}
-      secret_name: ${{ vars.AWS_PREVIEW_SECRET_NAME }}
+
+  deploy-web:
+    needs: deploy-api
+    uses: ./.github/workflows/deploy-reusable.yml
+    with:
+      application: web
+      environment: preview
+      stage: pr-${{ github.event.pull_request.number }}
+      operation: deploy
+      role_arn: ${{ vars.AWS_PREVIEW_ROLE_ARN }}
 
   remove:
     if: >-
       github.event.action == 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      vars.AWS_PREVIEW_ROLE_ARN != '' &&
-      vars.AWS_PREVIEW_SECRET_NAME != ''
+      vars.AWS_PREVIEW_ROLE_ARN != ''
     strategy:
       matrix:
         application: [web, api]
@@ -44,7 +48,7 @@ jobs:
     uses: ./.github/workflows/deploy-reusable.yml
     with:
       application: ${{ matrix.application }}
-      environment: pr-${{ github.event.pull_request.number }}
+      environment: preview
+      stage: pr-${{ github.event.pull_request.number }}
       operation: remove
       role_arn: ${{ vars.AWS_PREVIEW_ROLE_ARN }}
-      secret_name: ${{ vars.AWS_PREVIEW_SECRET_NAME }}

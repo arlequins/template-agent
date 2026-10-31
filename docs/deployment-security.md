@@ -8,15 +8,18 @@ Store role ARNs as GitHub variables. Role ARNs identify resources and are not cr
 
 - repository: `AWS_PREVIEW_ROLE_ARN`
 - repository: `AWS_PRODUCTION_ROLE_ARN`
-- repository: `AWS_PREVIEW_SECRET_NAME` and `AWS_PRODUCTION_SECRET_NAME`
+- repository: `AWS_QUICKSTART_ROLE_ARN`
 
-The secret-name variables identify the Secrets Manager values loaded into the
-deployment runner after OIDC authentication. They may contain a base name or a
-complete ARN; they are identifiers, not secret payloads. Preview jobs remain
-skipped until both preview variables are configured. See
-[CI/CD Operations](ci-cd.md) for the complete environment contract.
+Store the complete deployment `.env` content as `DEPLOY_ENV_FILE` in each
+GitHub Environment (`preview`, `production`, and `quickstart`). These secrets
+are available only after the job enters its configured Environment, are written
+to the runner with owner-only permissions, and are never sent to AWS Secrets
+Manager by CI/CD. Preview jobs remain skipped until the preview role variable
+is configured. See [CI/CD Operations](ci-cd.md) for the complete environment
+contract.
 
-Set `AWS_REGION` as an environment variable. Do not store AWS access keys in GitHub.
+Set `AWS_REGION` as a GitHub Environment variable. Do not store AWS access
+keys in GitHub.
 
 Start with the trust-policy template in [`docs/iam/github-oidc-trust-policy.json`](./iam/github-oidc-trust-policy.json). Replace placeholders and retain only the subject appropriate for each role before applying it. The deployment permission policy is intentionally not universal: generate it from CloudTrail after a sandbox deployment, then constrain actions and resources to the stacks, state bucket, asset bucket, and roles owned by this repository.
 

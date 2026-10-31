@@ -11,11 +11,10 @@ release automation. Security policy and AWS trust configuration remain in
 | `CI` | pull requests, `main`, merge queue | Formatting, linting, workflow validation, production builds, types, tests, generated-template qualification, Storybook, and E2E |
 | `PR title` | pull request title changes | Conventional Commit validation for squash merges |
 | `Security` | pull requests, merge queue, `main`, `develop`, weekly | Dependency review, CodeQL, secret scanning, license policy, and SBOM |
-| `Preview deployment` | same-repository pull requests | Deploy or remove isolated `pr-NUMBER` API and web stages |
-| `Production deployment` | manual | Deploy one application through the protected `production` environment |
+| `Preview deployment` | same-repository pull requests | Deploy an isolated `pr-NUMBER` stage in API → web order; remove it in reverse order |
+| `Production deployment` | manual | Deploy API → web through the protected `production` environment; optionally deploy batch afterwards |
 | `Release` | successful `CI` on `main`, manual | Maintain the Release Please PR and create version tags |
 | `Publish tagged release` | `vX.Y.Z` tag push | Re-verify the tagged source and create the GitHub Release |
-| `AWS sandbox smoke` | manual, weekly | Exercise Function URL and API Gateway sandbox endpoints |
 | `Quickstart deployment qualification` | manual | Rename, validate, deploy, and remove a fresh full template |
 | `Baseline load test` | manual | Run the k6 baseline against an approved HTTPS target |
 
@@ -37,18 +36,14 @@ Enable merge queue only after the same CI checks have run successfully for a
 `merge_group` event. Require at least one review, dismiss stale approvals, and
 block force pushes and branch deletion.
 
-Set these repository variables when the associated workflow is enabled:
+Set these GitHub configuration variables when the associated workflow is enabled:
 
 | Variable | Used by |
 | --- | --- |
-| `AWS_REGION` | All AWS deployment workflows |
+| `AWS_REGION` | AWS deployment workflows; use a GitHub Environment variable when regions differ |
 | `AWS_PREVIEW_ROLE_ARN` | Preview deploy and cleanup |
-| `AWS_PREVIEW_SECRET_NAME` | Preview runtime and SST environment |
 | `AWS_PRODUCTION_ROLE_ARN` | Production deployment |
-| `AWS_PRODUCTION_SECRET_NAME` | Production runtime and SST environment |
 | `AWS_QUICKSTART_ROLE_ARN` | Generated-template cloud qualification |
-| `AWS_SMOKE_FUNCTION_URL` | Scheduled Function URL smoke test |
-| `AWS_SMOKE_GATEWAY_URL` | Scheduled API Gateway smoke test |
 | `LOAD_TEST_API_URL` | k6 baseline |
 | `DEPENDENCY_REVIEW_ENABLED` | Makes dependency-review findings blocking when set to `true` |
 
@@ -68,19 +63,22 @@ version PR until one of these authorization paths is available.
 
 ## Deployment Environment Contract
 
-`AWS_PREVIEW_SECRET_NAME` and `AWS_PRODUCTION_SECRET_NAME` may be a complete
-Secrets Manager ARN or a base name. A complete ARN is read directly. A base
-name resolves to `<stage>/<base-name>/root`, such as
-`production/environments/root`.
+Store deployment values in the `DEPLOY_ENV_FILE` secret of each GitHub
+Environment. Its value is the complete multiline `.env` content required by
+SST; it is written with owner-only permissions to the runner and never printed.
+Use the `preview`, `production`, and `quickstart` Environments for their
+respective workflows. The reusable workflow receives a GitHub Environment
+separately from its SST stage, so preview jobs can use the `preview` secret
+while deploying the isolated `pr-NUMBER` stage.
 
-The secret value must be a JSON object containing the environment values
-required by the selected SST application. The reusable workflow validates all
-deployment inputs, assumes the configured AWS role, writes the secret to the
-runner's root `.env`, and only then invokes SST. The assumed role therefore
-needs least-privilege access to that secret and to the resources managed by the
-selected stack.
+The reusable workflow validates the application, operation, AWS OIDC role, and
+stage; configures AWS credentials; writes `DEPLOY_ENV_FILE`; then invokes SST.
+It deploys API before web in preview and production, ensuring the API
+infrastructure update completes before the static web build consumes its
+public configuration. The assumed role needs permissions only for the SST
+resources it manages; it no longer needs Secrets Manager read access for CI/CD.
 
-Preview deployment is skipped for forks and when either preview variable is
+Preview deployment is skipped for forks and when the preview role variable is
 missing. Production deployment always passes through the protected
 `production` GitHub Environment. Configure required reviewers and prevent
 self-review there.
@@ -101,7 +99,7 @@ test output for seven days.
 Deployment concurrency is serialized per stage and application. Do not cancel
 an in-progress infrastructure update; allow it to finish, inspect the SST
 state, then deploy a corrected revision. Preview cleanup runs when the pull
-request closes.
+request closes in web → API order.
 
 ## Release Flow
 
@@ -111,7 +109,7 @@ request closes.
 4. Release Please pushes `vX.Y.Z`; `Publish tagged release` re-verifies that
    exact source and creates the GitHub Release automatically.
 5. Run the production deployment procedure when that release is approved for
-   the target environment.
+   the target environment; it deploys API and then web.
 
 Release creation and production deployment remain separate audit events. This
 keeps publishing the template from implicitly changing cloud infrastructure.
