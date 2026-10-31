@@ -1,41 +1,32 @@
 # Agent operations
 
-The template deliberately keeps operational controls provider-neutral. Run the
-following checks from the deployed environment (or a trusted operator runner):
+Run the read-only readiness check from a trusted operator environment:
 
 ```bash
 pnpm agent:readiness --api-url https://api.example.com
-pnpm db:backup -- backups/pre-release.dump
-pnpm db:restore:verify -- backups/pre-release.dump agent_restore_check
 ```
 
-`agent:readiness` checks both liveness and PostgreSQL-backed readiness. It is
-safe for a scheduled monitor because it writes no agent data. A failed check
-must page the on-call owner; do not use liveness alone to declare the service
-healthy.
+The check validates process liveness and S3-backed readiness. Do not use liveness
+alone to declare the service healthy.
 
 ## Alert policy
 
-Configure the host's monitoring platform to alert on these signals:
-
 | Signal | Warning | Urgent action |
 | --- | --- | --- |
-| `/health/ready` failure | One failed scheduled check | Three consecutive failures or 5 minutes unavailable |
-| API 5xx rate | Above 1% for 10 minutes | Above 5% for 5 minutes |
-| Index runs | Any failed run | Repeated failures for a workspace; pause ingestion and inspect its audit log |
-| Workspace use | 80% of product quota | 100%; reject new writes at the application boundary |
-| Backup verification | Missed daily run | Restore verification fails; stop deployments and preserve the archive |
-
-Quotas are product policy, not hidden template defaults. Before production,
-enforce document, chunk, storage, and inference budgets at the delivery or
-application boundary, return a clear 429/403-style product error, and record
-only non-content audit metadata. `agent.usage` supplies bounded workspace
-counts for that decision; it does not silently delete data or charge users.
+| `/health/ready` | One failed scheduled check | Three consecutive failures or five minutes unavailable |
+| API 5xx rate | Above 1% for ten minutes | Above 5% for five minutes |
+| Evaluation or indexing | Any failed run | Repeated failures; pause activation and inspect audit events |
+| Workspace usage | 80% of product quota | 100%; reject new writes with a clear product error |
+| Release checksum | Any mismatch | Stop release activation and restore a known-good head |
 
 ## Recovery
 
-Use the existing custom-format backup and side-by-side restore workflow in
-[Database operations](./database-operations.md). For a document or retrieval
-incident, first soft-delete the affected document, preserve `audit_log` and
-`index_run` records, then re-ingest from a verified source. Do not restore a
-backup over a live database without first verifying it in a separate database.
+1. Verify the active release manifest and snapshot checksum.
+2. Conditionally point the active head to a known-good release.
+3. Rebuild damaged read models from immutable objects and events.
+4. Restore an older versioned object as a new current version.
+5. Re-run evaluation before activating another release.
+
+Do not overwrite a live state object without an ETag precondition. S3 Versioning
+inside one bucket is not an independent backup; add a separate backup bucket or
+cross-region replication only when recovery objectives justify the cost.

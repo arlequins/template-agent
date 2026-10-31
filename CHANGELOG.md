@@ -2,6 +2,27 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.5.0](https://github.com/arlequins/template-agent/compare/v0.4.1...v0.5.0) (2026-08-22)
+
+
+### Features
+
+* add clean architecture seams and hidden thought filter ([eaa6044](https://github.com/arlequins/template-agent/commit/eaa60445404e5032d3463e56acb9b3a30d8725f1))
+
+## [0.4.1](https://github.com/arlequins/template-agent/compare/v0.4.0...v0.4.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* preserve architecture migration guidance ([#16](https://github.com/arlequins/template-agent/issues/16)) ([882bb1d](https://github.com/arlequins/template-agent/commit/882bb1d46bfa1c2c91aba1e29b4830b617a18f9a))
+
+## [0.4.0](https://github.com/arlequins/template-agent/compare/v0.3.0...v0.4.0) (2026-08-01)
+
+
+### Features
+
+* make S3 the default agent persistence ([#12](https://github.com/arlequins/template-agent/issues/12)) ([303bfa6](https://github.com/arlequins/template-agent/commit/303bfa637b8c6029d8fe276bcf89bc456d1ac9f8))
+
 ## [0.3.0](https://github.com/arlequins/template-agent/compare/v0.2.0...v0.3.0) (2026-07-26)
 
 

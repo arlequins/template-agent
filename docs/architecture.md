@@ -4,9 +4,12 @@ This template keeps policy independent from delivery frameworks and providers.
 The example content slice is intentionally small, but it demonstrates the same
 dependency direction expected from production features.
 
+The incremental migration rules for server layers and web slices are in the
+[feature-sliced architecture guide](architecture-migration.md).
+
 ```text
 apps/web -> tRPC router -> application use case -> port <- adapter
-apps/api ------^                                      <- Drizzle / S3 / OIDC
+apps/api ------^                                      <- S3 / OIDC / model provider
 apps/batch -> composition -> application use case    <- provider SDKs
 ```
 
@@ -16,7 +19,7 @@ apps/batch -> composition -> application use case    <- provider SDKs
 | --- | --- | --- |
 | Domain | `packages/*/src/domain` | Business vocabulary and rules with no framework dependencies |
 | Application | `packages/*/src/application` | Use cases and outbound ports |
-| Adapters | `packages/trpc/src/adaptors`, `packages/db-backbone`, `apps/*/src/adaptors` | Translate databases, object storage, identity, and delivery mechanisms into ports |
+| Adapters | `packages/trpc/src/adaptors`, `packages/db-backbone`, `apps/*/src/adaptors` | Translate object storage, optional databases, identity, and delivery mechanisms into ports |
 | Composition | `packages/trpc/src/composition`, `apps/*/composition` | Select concrete adapters and construct use cases |
 | Delivery | tRPC routers, Hono routes, Lambda handlers, React views | Validate and translate requests, then call application behavior |
 
@@ -75,8 +78,8 @@ cp .env.localhost.example .env.localhost
 pnpm dev:local
 ```
 
-This starts PostgreSQL, applies migrations and seeds, and runs the local OIDC
-provider, API, and web app. The defaults are:
+This starts MinIO and runs the local OIDC provider, API, and web app. The
+defaults are:
 
 - Web: `http://localhost:3000`
 - API: `http://localhost:5000`
@@ -85,6 +88,7 @@ provider, API, and web app. The defaults are:
 - API explorer: `http://localhost:5000/docs`
 - OpenAPI contract: `http://localhost:5000/openapi.json`
 - tRPC: `http://localhost:5000/api/trpc`
+- MinIO console: `http://localhost:59001`
 
 `API_PORT` changes the local API port. `API_CORS_ORIGINS` accepts a
 comma-separated allowlist and defaults to `NEXT_PUBLIC_SITE_URL`.
@@ -103,6 +107,13 @@ building and deploying the web app.
 - Add typed application APIs as thin routers in `packages/trpc/src/router`.
 - Add ordinary HTTP endpoints as dedicated Hono route modules.
 - Put provider implementations in adapter directories and select them in composition roots.
-- Add Drizzle tables under `packages/db-backbone/src/schemas` and export them from `schema.ts`.
+- Keep S3 events immutable and update mutable read models with ETag preconditions.
+- Add Drizzle tables under `packages/db-backbone/src/schemas` only for optional relational extensions.
 - Centralize environment parsing in `@arlequins/env` and update examples plus `turbo.json`.
 - Commit a migration for every schema change and numbered seeds for data changes.
+
+### Web Feature-Sliced Design
+
+Routes in `apps/web/src/app` should compose widgets instead of owning business
+state. New code belongs in `shared`, `entities`, `features`, or `widgets`, in
+that dependency order. Compatibility barrels may remain while a slice moves.

@@ -1,4 +1,3 @@
-import { db } from "@arlequins/db-backbone/client";
 import { clientEnv, serverEnv } from "@arlequins/env";
 import type { ErrorReporter, Logger, Telemetry } from "@arlequins/logger";
 import {
@@ -10,9 +9,9 @@ import type { RateLimitPort } from "@arlequins/service";
 import { AppRouter, createTRPCContext, TRPC_HTTP_PATH } from "@arlequins/trpc";
 import { streamAgentCompletion } from "@arlequins/trpc/agent-completion";
 import { completeAgentInputSchema } from "@arlequins/validators";
+import { HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import { sql } from "drizzle-orm";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { requestId } from "hono/request-id";
@@ -42,8 +41,15 @@ export type CreateApiAppOptions = {
 
 let coldStart = true;
 
-async function checkDatabaseReadiness(): Promise<void> {
-  await db.execute(sql`select 1`);
+async function checkStorageReadiness(): Promise<void> {
+  if (!serverEnv.S3_AGENT_BUCKET)
+    throw new Error("S3_AGENT_BUCKET is not configured");
+  await new S3Client({
+    ...(serverEnv.S3_AGENT_ENDPOINT
+      ? { endpoint: serverEnv.S3_AGENT_ENDPOINT }
+      : {}),
+    forcePathStyle: serverEnv.S3_AGENT_FORCE_PATH_STYLE,
+  }).send(new HeadBucketCommand({ Bucket: serverEnv.S3_AGENT_BUCKET }));
 }
 
 function configuredCorsOrigins(): string[] {
@@ -91,7 +97,7 @@ export function createApiApp(options: CreateApiAppOptions = {}) {
   });
   const corsOrigins = options.corsOrigins ?? configuredCorsOrigins();
   const rootLogger = options.logger ?? createLogger({ service: "api" });
-  const readinessCheck = options.readinessCheck ?? checkDatabaseReadiness;
+  const readinessCheck = options.readinessCheck ?? checkStorageReadiness;
   const externalChecks = options.externalReadinessChecks ?? {};
   const errorReporter = options.errorReporter ?? noopErrorReporter;
   const telemetry =
@@ -248,6 +254,32 @@ export function createApiApp(options: CreateApiAppOptions = {}) {
         401,
       );
     }
+    let lease: Awaited<
+      ReturnType<typeof trpcContext.services.agent.acquireJob>
+    >;
+    try {
+      lease = await trpcContext.services.agent.acquireJob(session.user.id, {
+        estimatedDurationMs: 120_000,
+        kind: "chat",
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        "estimatedCompletionAt" in error &&
+        typeof error.estimatedCompletionAt === "string"
+      ) {
+        return context.json(
+          {
+            error: "Agent Busy",
+            estimatedCompletionAt: error.estimatedCompletionAt,
+            message: `A previous request is still processing. Estimated completion time: ${error.estimatedCompletionAt}.`,
+            requestId: context.get("requestId"),
+          },
+          409,
+        );
+      }
+      throw error;
+    }
     const encoder = new TextEncoder();
     const body = new ReadableStream<Uint8Array>({
       async start(controller) {
@@ -256,6 +288,7 @@ export function createApiApp(options: CreateApiAppOptions = {}) {
             trpcContext.services,
             session.user.id,
             parsed.data,
+            lease,
           )) {
             controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
           }
