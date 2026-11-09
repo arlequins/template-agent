@@ -2,6 +2,13 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.5.2](https://github.com/arlequins/template-agent/compare/v0.5.1...v0.5.2) (2026-11-09)
+
+
+### Bug Fixes
+
+* **cache:** bypass oversized S3 cache writes ([#24](https://github.com/arlequins/template-agent/issues/24)) ([3db7de7](https://github.com/arlequins/template-agent/commit/3db7de70ae4efd1da3932fa842749df87f6ab6a3))
+
 ## [0.5.1](https://github.com/arlequins/template-agent/compare/v0.5.0...v0.5.1) (2026-10-31)
 
 
